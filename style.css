@@ -273,30 +273,29 @@ main {
 }
 /* Editor overlay */
 .editor-overlay {
-	position: fixed;
-	inset: 0;
-	background: rgba(10, 12, 20, 0.6);
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: flex-start;
-	padding: 18px;
-	z-index: 9999;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #f8fafc;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Prevent stray scrollbars */
 }
 .editor-overlay.hidden {
 	display: none;
 }
 .editor-topbar {
-	width: 100%;
-	max-width: 1200px;
-	background: var(--card);
-	padding: 10px;
-	border-radius: 10px;
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	box-shadow: var(--shadow);
-	margin-bottom: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  background: white;
+  border-bottom: 1px solid rgba(0,0,0,0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-sizing: border-box;
 }
 .editor-tools {
 	display: flex;
@@ -401,34 +400,37 @@ main {
 	filter: brightness(0) invert(1);
 }
 .editor-body {
-	width: 100%;
-	max-width: 1200px;
-	background: #fff;
-	padding: 8px;
-	border-radius: 10px;
-	box-shadow: var(--shadow);
-	min-height: 540px;
-	overflow: auto;
+  flex: 1;
+  overflow-y: auto;          /* vertical scroll allowed */
+  overflow-x: hidden;        /* horizontal scroll DISABLED */
+  display: flex;
+  justify-content: center;   /* center PDF horizontally */
+  align-items: flex-start;
+  background: #f1f5f9;
+  padding: 0;                /* remove space around */
+  margin: 0;
 }
 .page-container {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	min-height: 520px;
-	padding: 20px;
+  width: 100%;
+  display: flex;
+  justify-content: center; /* center page */
+  padding: 0;
+  margin: 0;
 }
 .page-wrap {
-	position: relative;
-	background: #e9eefb;
-	padding: 10px;
-	border-radius: 8px;
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-	margin-bottom: 20px;
+  position: relative;
+  margin: 0; /* remove spacing around page */
 }
 canvas.base-canvas {
 	display: block;
 	border: 1px solid #ddd;
 	border-radius: 4px;
+}
+.base-canvas,
+.annot-canvas {
+  max-width: 100%;
+  height: auto;
+  display: block;
 }
 canvas.annot-canvas {
 	position: absolute;
@@ -529,4 +531,16 @@ canvas.annot-canvas.crosshair-cursor {
 .developer-credit strong{
   color: black;
   font-weight: 600;
+}
+#mergeEditBtn{
+	color: white;
+}
+#addBtn{
+	background-color: gray;
+	color: white;
+}
+
+#clearBtn{
+	background-color: red;
+	color: white;
 }

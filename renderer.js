@@ -700,13 +700,19 @@ function showTextEditorControls(action, pageObj, canvasRect, isExisting = true) 
     }, 140);
   });
 
-  // ensure focus
-  textarea.focus();
+  // ensure focus — small delay to avoid race with pointer events
+  setTimeout(() => {
+    try { textarea.focus(); } catch (e) { /* ignore */ }
+  }, 30);
 
-  // close when clicking outside
+  // small safety window to ignore immediate outside clicks (prevents flicker on some platforms)
+  controls._ignoreUntil = Date.now() + 350;
+
+  // close when clicking outside — respects the small ignore window
   setTimeout(() => {
     const outsideHandler = (ev) => {
       if (!controls.contains(ev.target)) {
+        if (Date.now() < controls._ignoreUntil) return;
         controls.remove();
         if (!isExisting) selectedTextAction = null;
         document.removeEventListener('click', outsideHandler);
@@ -804,10 +810,24 @@ function initAnnotCanvas(canvas, pageObj) {
         x1: x, y1: y, x2: x, y2: y,
       };
     } else if (currentTool === 'text') {
-      currentPath = {
-        type: 'text-box-preview',
-        x1: x, y1: y, x2: x, y2: y,
-      };
+      // NEW BEHAVIOR: open text editor on a single click at pointer location
+      // Use default width/height (user may resize)
+      const DEFAULT_TEXT_WIDTH = 600;
+      const DEFAULT_TEXT_HEIGHT = 40;
+
+      // Prevent the original event from propagating (avoids races that can close the editor)
+      try {
+        e.preventDefault();
+        e.stopPropagation();
+      } catch (err) { /* some environments may not allow */ }
+
+      // Open editor immediately and DO NOT set currentPath/drawing — action is created only on commit
+      openEditorForNewText(x, y, DEFAULT_TEXT_WIDTH, DEFAULT_TEXT_HEIGHT, pageObj, rect);
+
+      // ensure we don't consider this as an active drawing
+      drawing = false;
+      currentPath = null;
+      return;
     } else {
       drawing = false;
     }
@@ -833,7 +853,7 @@ function initAnnotCanvas(canvas, pageObj) {
     for (const a of pageObj.actions) drawAction(ctx, a);
 
     // Draw preview for text box (single dashed rounded preview)
-    if (currentPath.type === 'text-box-preview') {
+    if (currentPath && currentPath.type === 'text-box-preview') {
       ctx.save();
       ctx.strokeStyle = 'rgba(11,95,255,0.9)';
       ctx.lineWidth = 2;
