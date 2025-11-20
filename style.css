@@ -7,6 +7,7 @@
 	--glass: rgba(255, 255, 255, 0.9);
 	--shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
   --dark:rgba(0, 0, 0, 0);
+	--success: #10b981;
 }
 * {
 	box-sizing: border-box;
@@ -301,17 +302,103 @@ main {
 	display: flex;
 	gap: 6px;
 	flex-wrap: wrap;
+	align-items: center;
 }
 .editor-tools .tool {
-	padding: 8px 10px;
+	padding: 8px 12px;
 	border-radius: 8px;
 	border: 1px solid rgba(0, 0, 0, 0.06);
 	cursor: pointer;
 	background: transparent;
 	transition: all 0.2s;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-width: 38px;
+	min-height: 38px;
+}
+.editor-tools .tool img {
+	width: 20px;
+	height: 20px;
+	display: block;
 }
 .editor-tools .tool:hover {
 	background: rgba(11, 95, 255, 0.08);
+	transform: translateY(-1px);
+}
+.editor-tools .tool.active {
+	background: #e6f0ff;
+	border: 2px solid var(--accent);
+	font-weight: bold;
+}
+
+/* Color Picker Panel */
+.color-picker-panel {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 4px 12px;
+	background: #f8f9fa;
+	border-radius: 8px;
+	border: 1px solid rgba(0, 0, 0, 0.06);
+}
+.color-label {
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--muted);
+}
+.color-options {
+	display: flex;
+	gap: 4px;
+}
+.color-btn {
+	width: 28px;
+	height: 28px;
+	border-radius: 6px;
+	border: 2px solid transparent;
+	cursor: pointer;
+	transition: all 0.2s;
+	padding: 0;
+}
+.color-btn:hover {
+	transform: scale(1.1);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+.color-btn.active {
+	border-color: #0f172a;
+	box-shadow: 0 0 0 2px white, 0 0 0 4px #0f172a;
+	transform: scale(1.15);
+}
+
+/* Save PDF button - prominent green */
+.editor-tools .save-pdf-btn {
+	background: linear-gradient(135deg, var(--success), #059669);
+	color: white;
+	border: none;
+	padding: 8px 16px;
+	font-weight: 600;
+	box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+.editor-tools .save-pdf-btn:hover {
+	background: linear-gradient(135deg, #059669, #047857);
+	box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+	transform: translateY(-2px);
+}
+.editor-tools .save-pdf-btn img {
+	filter: brightness(0) invert(1);
+}
+/* Close button - red */
+.editor-tools .close-btn {
+	background: var(--danger);
+	color: white;
+	border: none;
+}
+.editor-tools .close-btn:hover {
+	background: #e04848;
+}
+.editor-tools .close-btn img {
+	filter: brightness(0) invert(1);
 }
 .editor-body {
 	width: 100%;
@@ -348,8 +435,76 @@ canvas.annot-canvas {
 	left: 10px;
 	top: 10px;
 	pointer-events: auto;
+}
+/* Cursor changes based on tool */
+canvas.annot-canvas.pointer-cursor {
+	cursor: grab;
+}
+canvas.annot-canvas.pointer-cursor:active {
+	cursor: grabbing;
+}
+canvas.annot-canvas.pen-cursor {
+	cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><circle cx="2" cy="14" r="2" fill="%23ff0000"/></svg>') 2 14, crosshair;
+}
+canvas.annot-canvas.text-cursor {
+	cursor: text;
+}
+canvas.annot-canvas.crosshair-cursor {
 	cursor: crosshair;
 }
+
+/* Text Editor Controls */
+.text-editor-controls {
+	position: absolute;
+	background: white;
+	border: 2px solid var(--accent);
+	border-radius: 8px;
+	padding: 8px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	display: flex;
+	gap: 6px;
+	align-items: center;
+	z-index: 10000;
+}
+.text-editor-controls button {
+	padding: 6px 10px;
+	border-radius: 6px;
+	border: 1px solid rgba(0, 0, 0, 0.1);
+	background: white;
+	cursor: pointer;
+	font-size: 12px;
+	font-weight: 600;
+	transition: all 0.2s;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+.text-editor-controls button:hover {
+	background: #f0f0f0;
+}
+.text-editor-controls .size-control {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	padding: 4px 8px;
+	background: #f8f9fa;
+	border-radius: 6px;
+}
+.text-editor-controls .size-display {
+	font-size: 12px;
+	font-weight: 600;
+	min-width: 30px;
+	text-align: center;
+}
+.text-editor-controls .delete-btn {
+	background: var(--danger);
+	color: white;
+	border: none;
+}
+.text-editor-controls .delete-btn:hover {
+	background: #e04848;
+}
+
 .editor-page-nav {
 	display: flex;
 	align-items: center;

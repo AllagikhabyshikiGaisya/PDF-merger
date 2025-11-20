@@ -74,16 +74,53 @@
 		<div id="editorOverlay" class="editor-overlay hidden">
 			<div class="editor-topbar">
 				<div class="editor-tools">
-					<button class="tool" data-tool="pointer">Pointer</button>
-					<button class="tool" data-tool="rect">Rect</button>
-					<button class="tool" data-tool="arrow">Arrow</button>
-					<button class="tool" data-tool="pen">Pen</button>
-					<button class="tool" data-tool="text">Text</button>
-					<button class="tool" data-tool="highlight">Highlight</button>
-					<button class="tool" id="undoBtn">Undo</button>
-					<button class="tool" id="redoBtn">Redo</button>
-					<button class="tool" id="doneBtn">Save PDF</button>
-					<button class="tool" id="closeEditor">Close</button>
+					<button class="tool" data-tool="pointer" title="Pointer">
+						<img src="icons/pointer.svg" alt="Pointer" />
+					</button>
+					<button class="tool" data-tool="rect" title="Rectangle">
+						<img src="icons/square.svg" alt="Rectangle" />
+					</button>
+					<button class="tool" data-tool="arrow" title="Arrow">
+						<img src="icons/arrow.svg" alt="Arrow" />
+					</button>
+					<button class="tool" data-tool="pen" title="Pen">
+						<img src="icons/pen.svg" alt="Pen" />
+					</button>
+					<button class="tool" data-tool="text" title="Text">
+						<img src="icons/type.svg" alt="Text" />
+					</button>
+					<button class="tool" data-tool="highlight" title="Highlight">
+						<img src="icons/highlighter.svg" alt="Highlight" />
+					</button>
+
+					<!-- Color Picker Panel -->
+					<div class="color-picker-panel">
+						<div class="color-label">Color:</div>
+						<div class="color-options">
+							<button class="color-btn active" data-color="#ff0000" style="background: #ff0000;" title="Red"></button>
+							<button class="color-btn" data-color="#0b5fff" style="background: #0b5fff;" title="Blue"></button>
+							<button class="color-btn" data-color="#10b981" style="background: #10b981;" title="Green"></button>
+							<button class="color-btn" data-color="#fbbf24" style="background: #fbbf24;" title="Yellow"></button>
+							<button class="color-btn" data-color="#f97316" style="background: #f97316;" title="Orange"></button>
+							<button class="color-btn" data-color="#a855f7" style="background: #a855f7;" title="Purple"></button>
+							<button class="color-btn" data-color="#ec4899" style="background: #ec4899;" title="Pink"></button>
+							<button class="color-btn" data-color="#000000" style="background: #000000;" title="Black"></button>
+						</div>
+					</div>
+
+					<button class="tool" id="undoBtn" title="Undo">
+						<img src="icons/undo.svg" alt="Undo" />
+					</button>
+					<button class="tool" id="redoBtn" title="Redo">
+						<img src="icons/redo.svg" alt="Redo" />
+					</button>
+					<button class="tool save-pdf-btn" id="doneBtn" title="Save PDF">
+						<img src="icons/save.svg" alt="Save" />
+						<span>Save PDF</span>
+					</button>
+					<button class="tool close-btn" id="closeEditor" title="Close">
+						<img src="icons/x.svg" alt="Close" />
+					</button>
 				</div>
 				<div class="editor-page-nav">
 					<button id="prevPage">◀</button>
