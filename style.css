@@ -527,6 +527,6 @@ canvas.annot-canvas.crosshair-cursor {
 	text-align: center;
 }
 .developer-credit strong{
-  color: var(--dark);
+  color: black;
   font-weight: 600;
 }
