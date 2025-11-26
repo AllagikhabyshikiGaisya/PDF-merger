@@ -1,4 +1,4 @@
-// renderer.js — Complete with Lazy Loading Optimizations
+// renderer.js — Complete with Lazy Loading Optimizations and Performance Improvements
 
 const { pdfjsDistPath, pdfjsWorkerPath, pdfLibPath } = window.libs || {};
 
@@ -59,8 +59,8 @@ let pageRenderQueue = [];
 let isProcessingQueue = false;
 
 const MAX_IMAGE_WIDTH = 1600;
-const JPEG_QUALITY = 0.8;
-const RENDER_SCALE = 2.0;
+const JPEG_QUALITY = 0.95;
+const RENDER_SCALE = 3.0;
 const MIN_ZOOM = 0.25;
 const MAX_ZOOM = 5.0;
 const ZOOM_STEP = 0.25;
@@ -395,15 +395,16 @@ async function imageBufferToPdfBytes(imageBuffer, mimeType = 'image/jpeg') {
 }
 
 async function validatePdfBytes(bytesLike) {
-  await ensurePdfLib();
-  if (!PDFLib) return false;
-  try {
-    const u8 = bytesLike instanceof Uint8Array ? bytesLike : new Uint8Array(bytesLike);
-    await PDFLib.PDFDocument.load(u8, { ignoreEncryption: true });
+  // Quick header validation
+  const u8 = bytesLike instanceof Uint8Array ? bytesLike : new Uint8Array(bytesLike);
+  if (u8.length < 4) return false;
+
+  // Check PDF header %PDF
+  if (u8[0] === 0x25 && u8[1] === 0x50 && u8[2] === 0x44 && u8[3] === 0x46) {
     return true;
-  } catch (e) {
-    return false;
   }
+
+  return false;
 }
 
 async function tryRecoverPdfWithPdfJs(uint8arr) {
@@ -445,55 +446,81 @@ async function normalizeFilesToPdfUploadsWithValidation(fileList) {
   const out = [];
   const skipped = [];
 
-  // Process files in batches
-  for (let i = 0; i < fileList.length; i += PAGES_PER_BATCH) {
-    const batch = fileList.slice(i, i + PAGES_PER_BATCH);
-    await Promise.all(batch.map(async (f) => {
-      try {
+  // Process files in parallel batches
+  const BATCH_SIZE = 5;
+  for (let i = 0; i < fileList.length; i += BATCH_SIZE) {
+    const batch = fileList.slice(i, i + BATCH_SIZE);
+
+    const results = await Promise.allSettled(
+      batch.map(async (f) => {
         if (!f || !f.type) {
-          skipped.push({ name: f?.name || 'unknown', reason: 'no-type' });
-          return;
+          return { skipped: { name: f?.name || 'unknown', reason: 'no-type' } };
         }
+
         if (f.type === 'application/pdf') {
           const arr = f.buffer instanceof ArrayBuffer ? new Uint8Array(f.buffer) : new Uint8Array(f.buffer);
+
+          // Quick validation
           const isValid = await validatePdfBytes(arr);
+
           if (isValid) {
-            out.push({ name: f.name, type: 'application/pdf', bytes: arr });
+            return { success: { name: f.name, type: 'application/pdf', bytes: arr } };
           } else {
+            // Try recovery only if quick check fails
             const recovered = await tryRecoverPdfWithPdfJs(arr);
             if (recovered) {
-              out.push({ name: f.name, type: 'application/pdf', bytes: recovered });
-            } else {
-              skipped.push({ name: f.name, reason: 'invalid-pdf' });
+              return { success: { name: f.name, type: 'application/pdf', bytes: recovered } };
             }
+            return { skipped: { name: f.name, reason: 'invalid-pdf' } };
           }
         } else if (f.type.startsWith('image/')) {
-          try {
-            const imgBuffer = f.buffer instanceof ArrayBuffer ? f.buffer : f.buffer;
-            const pdfBytes = await imageBufferToPdfBytes(imgBuffer, f.type);
-            const u8 = pdfBytes instanceof Uint8Array ? pdfBytes : new Uint8Array(pdfBytes);
-            const valid = await validatePdfBytes(u8);
-            if (valid) {
-              out.push({ name: f.name.replace(/\.[^/.]+$/, '.pdf'), type: 'application/pdf', bytes: u8 });
-            } else {
-              skipped.push({ name: f.name, reason: 'image->pdf-failed' });
+          // For images, send as-is - backend will handle conversion
+          const imgBuffer = f.buffer instanceof ArrayBuffer ? f.buffer : f.buffer;
+          return {
+            success: {
+              name: f.name,
+              type: f.type,
+              bytes: imgBuffer instanceof ArrayBuffer ? new Uint8Array(imgBuffer) : new Uint8Array(imgBuffer)
             }
-          } catch (e) {
-            skipped.push({ name: f.name, reason: 'image->pdf-exception' });
-          }
+          };
         } else {
-          skipped.push({ name: f.name, reason: 'unsupported-type' });
+          return { skipped: { name: f.name, reason: 'unsupported-type' } };
         }
-      } catch (e) {
-        skipped.push({ name: f?.name || 'unknown', reason: 'exception' });
-      }
-    }));
+      })
+    );
 
-    // Allow UI to breathe between batches
+    // Collect results
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        if (result.value.success) {
+          out.push(result.value.success);
+        } else if (result.value.skipped) {
+          skipped.push(result.value.skipped);
+        }
+      } else {
+        skipped.push({ name: 'unknown', reason: 'exception' });
+      }
+    }
+
+    // Update progress
+    const progress = Math.round(((i + batch.length) / fileList.length) * 100);
+    if (statusEl) {
+      statusEl.innerText = `${LANG[currentLang].status_loading} ${progress}%`;
+    }
+
     await new Promise(resolve => setTimeout(resolve, 0));
   }
 
   return { normalized: out, skipped };
+}
+
+// Listen for merge progress updates
+if (window.electronAPI && window.electronAPI.onMergeProgress) {
+  window.electronAPI.onMergeProgress((progress) => {
+    if (statusEl) {
+      statusEl.innerText = `${LANG[currentLang].status_merging} ${progress}%`;
+    }
+  });
 }
 
 // ---------------- Merge Only ----------------
@@ -501,26 +528,31 @@ mergeBtn && mergeBtn.addEventListener('click', async () => {
   if (files.length < 1) return;
   statusEl && (statusEl.innerText = LANG[currentLang].status_merging);
   mergeBtn.disabled = true;
-  try {
-    // Ensure pdf-lib is loaded before merging
-    await ensurePdfLib();
 
+  try {
     const { normalized, skipped } = await normalizeFilesToPdfUploadsWithValidation(files);
+
     if (skipped.length) console.warn('Skipped files:', skipped);
     if (normalized.length === 0) {
       statusEl && (statusEl.innerText = 'No valid PDFs to merge.');
       mergeBtn.disabled = false;
       return;
     }
+
+    // Send normalized files directly
     const toSend = normalized.map((f) => ({
       name: f.name,
       type: f.type,
-      buffer: f.bytes instanceof Uint8Array ? f.bytes : new Uint8Array(f.bytes)
+      buffer: f.bytes
     }));
+
     const res = await window.electronAPI.mergeFiles(toSend);
+
     if (!res.success) throw new Error(res.message || 'merge failed');
+
     const bytes = Uint8Array.from(res.bytes);
     const saveRes = await window.electronAPI.saveBytes('merged.pdf', bytes);
+
     if (saveRes.success) {
       statusEl && (statusEl.innerText = `${LANG[currentLang].saved} ${saveRes.path}`);
     } else {
@@ -540,27 +572,28 @@ mergeEditBtn && mergeEditBtn.addEventListener('click', async () => {
   if (files.length < 1) return;
   statusEl && (statusEl.innerText = LANG[currentLang].status_merging);
   mergeEditBtn.disabled = true;
-  try {
-    // Ensure pdf-lib is loaded before merging
-    await ensurePdfLib();
 
+  try {
     const { normalized, skipped } = await normalizeFilesToPdfUploadsWithValidation(files);
+
     if (skipped.length) console.warn('Skipped files:', skipped);
     if (normalized.length === 0) {
       statusEl && (statusEl.innerText = 'No valid PDFs to merge.');
       mergeEditBtn.disabled = false;
       return;
     }
+
     const toSend = normalized.map((f) => ({
       name: f.name,
       type: f.type,
-      buffer: f.bytes instanceof Uint8Array ? f.bytes : new Uint8Array(f.bytes)
+      buffer: f.bytes
     }));
-    const res = await window.electronAPI.mergeFiles(toSend);
-    if (!res.success) throw new Error(res.message || 'merge failed');
-    const mergedBytes = Uint8Array.from(res.bytes);
 
-    // Open editor with merged PDF
+    const res = await window.electronAPI.mergeFiles(toSend);
+
+    if (!res.success) throw new Error(res.message || 'merge failed');
+
+    const mergedBytes = Uint8Array.from(res.bytes);
     await openEditor(mergedBytes);
   } catch (err) {
     console.error('Merge & Edit error:', err);
@@ -623,9 +656,17 @@ async function renderPageFromQueue(pdf, pageIndex) {
     const canvas = document.createElement('canvas');
     canvas.width = Math.round(viewport.width);
     canvas.height = Math.round(viewport.height);
-    const ctx = canvas.getContext('2d', { alpha: false });
+    const ctx = canvas.getContext('2d', {
+      alpha: false,
+      willReadFrequently: false,
+      desynchronized: true
+    });
 
-    await page.render({ canvasContext: ctx, viewport }).promise;
+    await page.render({
+      canvasContext: ctx,
+      viewport,
+      intent: 'display'
+    }).promise;
 
     pageData.canvas = canvas;
     pageData.rendered = true;
@@ -640,7 +681,9 @@ async function renderPageFromQueue(pdf, pageIndex) {
 }
 
 // ---------------- Editor Functions ----------------
+// ---------------- Editor Functions ----------------
 async function openEditor(pdfBytes) {
+    window.originalPdfBytes = pdfBytes;
   // Hide merger page, show editor page
   mergerPage.style.display = 'none';
   editorPage.style.display = 'flex';
@@ -662,27 +705,34 @@ async function openEditor(pdfBytes) {
   loadedPdfDocument = pdf;
   const pageCount = pdf.numPages;
 
-  // Create page objects
+  // Create page objects WITHOUT rendering
   for (let i = 1; i <= pageCount; i++) {
     editorPages.push({
       pageNumber: i,
       rendered: false,
       canvas: null,
       thumbnail: null,
+      thumbnailRendered: false,
       annotations: [],
       undoStack: [],
       redoStack: [],
     });
   }
 
-  // Render first page with priority
+  // Create placeholder thumbnails immediately (no rendering yet)
+  createPlaceholderThumbnails(pageCount);
+
+  // Render ONLY the first page with high priority
   await renderPageFromQueue(pdf, 0);
   displayPageOnMainCanvas(0);
 
-  // Create all thumbnails (lightweight)
-  await createAllThumbnails(pdf);
+  // Update status to ready
+  statusEl && (statusEl.innerText = LANG[currentLang].status_idle);
 
-  // Queue remaining pages for lazy loading
+  // Start lazy loading thumbnails in the background
+  lazyLoadThumbnails(pdf);
+
+  // Queue remaining full pages for lazy loading (low priority)
   for (let i = 1; i < pageCount; i++) {
     addToRenderQueue(pdf, i, false);
   }
@@ -691,71 +741,121 @@ async function openEditor(pdfBytes) {
 async function renderPage(pdf, pageIndex) {
   addToRenderQueue(pdf, pageIndex, true);
 }
-
-async function createAllThumbnails(pdf) {
+// Create placeholder thumbnails instantly without rendering
+function createPlaceholderThumbnails(pageCount) {
   const L = LANG[currentLang];
-  const thumbScale = 0.3;
 
-  // Create thumbnails in batches
-  for (let i = 0; i < editorPages.length; i += PAGES_PER_BATCH) {
-    const batch = editorPages.slice(i, i + PAGES_PER_BATCH);
+  for (let i = 0; i < pageCount; i++) {
+    const thumbItem = document.createElement('div');
+    thumbItem.className = 'thumbnail-item';
+    if (i === 0) thumbItem.classList.add('active');
+    thumbItem.dataset.pageIndex = i;
+
+    const thumbImageContainer = document.createElement('div');
+    thumbImageContainer.className = 'thumbnail-image';
+    thumbImageContainer.style.backgroundColor = '#f1f5f9';
+    thumbImageContainer.style.display = 'flex';
+    thumbImageContainer.style.alignItems = 'center';
+    thumbImageContainer.style.justifyContent = 'center';
+    thumbImageContainer.style.minHeight = '120px';
+    thumbImageContainer.style.color = '#94a3b8';
+    thumbImageContainer.style.fontSize = '12px';
+    thumbImageContainer.innerHTML = '📄';
+
+    const thumbLabel = document.createElement('div');
+    thumbLabel.className = 'thumbnail-label';
+    thumbLabel.innerText = `${L.pageLabel} ${i + 1}`;
+
+    thumbItem.appendChild(thumbImageContainer);
+    thumbItem.appendChild(thumbLabel);
+
+    thumbItem.addEventListener('click', () => {
+      currentPageIndex = i;
+      displayPageOnMainCanvas(i);
+      updateThumbnailSelection();
+      renderAnnotations();
+
+      // Prioritize rendering of clicked page if not already rendered
+      if (!editorPages[i].rendered) {
+        addToRenderQueue(loadedPdfDocument, i, true);
+      }
+
+      // Ensure thumbnail is rendered
+      if (!editorPages[i].thumbnailRendered) {
+        renderThumbnail(loadedPdfDocument, i);
+      }
+    });
+
+    thumbnailContainer.appendChild(thumbItem);
+    editorPages[i].thumbnail = thumbItem;
+  }
+}
+
+// Lazy load thumbnails in the background
+async function lazyLoadThumbnails(pdf) {
+  const THUMB_BATCH_SIZE = 5;
+
+  // Start from index 0 to render all thumbnails
+  for (let i = 0; i < editorPages.length; i += THUMB_BATCH_SIZE) {
+    const batch = editorPages.slice(i, Math.min(i + THUMB_BATCH_SIZE, editorPages.length));
 
     await Promise.all(batch.map(async (pageData, batchIndex) => {
       const actualIndex = i + batchIndex;
-      try {
-        const page = await pdf.getPage(pageData.pageNumber);
-
-        // Create thumbnail
-        const viewport = page.getViewport({ scale: thumbScale });
-        const thumbCanvas = document.createElement('canvas');
-        thumbCanvas.width = Math.round(viewport.width);
-        thumbCanvas.height = Math.round(viewport.height);
-        const ctx = thumbCanvas.getContext('2d');
-
-        await page.render({ canvasContext: ctx, viewport }).promise;
-
-        // Create thumbnail container
-        const thumbItem = document.createElement('div');
-        thumbItem.className = 'thumbnail-item';
-        if (actualIndex === 0) thumbItem.classList.add('active');
-        thumbItem.dataset.pageIndex = actualIndex;
-
-        const thumbImageContainer = document.createElement('div');
-        thumbImageContainer.className = 'thumbnail-image';
-        thumbImageContainer.appendChild(thumbCanvas);
-
-        const thumbLabel = document.createElement('div');
-        thumbLabel.className = 'thumbnail-label';
-        thumbLabel.innerText = `${L.pageLabel} ${actualIndex + 1}`;
-
-        thumbItem.appendChild(thumbImageContainer);
-        thumbItem.appendChild(thumbLabel);
-
-        thumbItem.addEventListener('click', () => {
-          currentPageIndex = actualIndex;
-          displayPageOnMainCanvas(actualIndex);
-          updateThumbnailSelection();
-          renderAnnotations();
-
-          // Prioritize rendering of clicked page if not already rendered
-          if (!editorPages[actualIndex].rendered) {
-            addToRenderQueue(pdf, actualIndex, true);
-          }
-        });
-
-        thumbnailContainer.appendChild(thumbItem);
-        pageData.thumbnail = thumbItem;
-      } catch (err) {
-        console.error(`Error creating thumbnail for page ${actualIndex}:`, err);
+      if (!pageData.thumbnailRendered) {
+        await renderThumbnail(pdf, actualIndex);
       }
     }));
 
-    // AllowUI to breathe between batches
-await new Promise(resolve => setTimeout(resolve, 0));
+    // Allow UI to breathe between batches
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
 }
+
+// Render a single thumbnail
+async function renderThumbnail(pdf, pageIndex) {
+  const pageData = editorPages[pageIndex];
+  if (!pageData || pageData.thumbnailRendered) return;
+
+  try {
+    const page = await pdf.getPage(pageData.pageNumber);
+    const thumbScale = 0.3;
+    const viewport = page.getViewport({ scale: thumbScale });
+
+    const thumbCanvas = document.createElement('canvas');
+    thumbCanvas.width = Math.round(viewport.width);
+    thumbCanvas.height = Math.round(viewport.height);
+    const ctx = thumbCanvas.getContext('2d', { alpha: false });
+
+    await page.render({
+      canvasContext: ctx,
+      viewport,
+      intent: 'display'
+    }).promise;
+
+    // Update the placeholder with actual thumbnail
+    const thumbItem = pageData.thumbnail;
+    if (thumbItem) {
+      const thumbImageContainer = thumbItem.querySelector('.thumbnail-image');
+      if (thumbImageContainer) {
+        thumbImageContainer.innerHTML = '';
+        thumbImageContainer.style.backgroundColor = 'transparent';
+        thumbImageContainer.appendChild(thumbCanvas);
+      }
+    }
+
+    pageData.thumbnailRendered = true;
+  } catch (err) {
+    console.error(`Error rendering thumbnail for page ${pageIndex}:`, err);
+  }
 }
+
 function displayPageOnMainCanvas(pageIndex) {
 const pageData = editorPages[pageIndex];
+// Check if pageData exists and has canvas
+if (!pageData) {
+console.error('Page data not found for index:', pageIndex);
+return;
+}
 if (!pageData.canvas) {
 // Show loading indicator for this page
 const ctx = mainCanvas.getContext('2d');
@@ -823,10 +923,10 @@ zoomOutBtn.disabled = zoomLevel <= MIN_ZOOM;
 }
 function applyPanTransform() {
   if (!mainCanvas) return;
-  mainCanvas.style.transform = `translate(${panX}px, ${panY}px)`;  // ✅ CORRECT
+  mainCanvas.style.transform = `translate(${panX}px, ${panY}px)`;
   mainCanvas.style.cursor = zoomLevel > 1 ? 'grab' : 'default';
   if (annotCanvas) {
-    annotCanvas.style.transform = `translate(${panX}px, ${panY}px)`;  // ✅ CORRECT
+    annotCanvas.style.transform = `translate(${panX}px, ${panY}px)`;
   }
 }
 function zoomIn() {
@@ -1048,6 +1148,7 @@ mergerPage.style.display = 'block';
 // Clear editor state
 editorPages = [];
 thumbnailContainer.innerHTML = '';
+window.originalPdfBytes = null;
 loadedPdfDocument = null;
 pageRenderQueue = [];
 isProcessingQueue = false;
@@ -1063,108 +1164,173 @@ updateToolUI();
 });
 // Save PDF with annotations
 savePdfBtn && savePdfBtn.addEventListener('click', async () => {
-try {
-statusEl && (statusEl.innerText = LANG[currentLang].status_exporting);
-// Ensure pdf-lib is loaded
-await ensurePdfLib();
+  try {
+    statusEl && (statusEl.innerText = LANG[currentLang].status_exporting);
 
-// Wait for all pages to be rendered
-while (pageRenderQueue.length > 0 || isProcessingQueue) {
-  await new Promise(resolve => setTimeout(resolve, 100));
-}
+    await ensurePdfLib();
 
-const pdfDoc = await PDFLib.PDFDocument.create();
-
-for (const pageData of editorPages) {
-  if (!pageData.canvas) continue;
-
-  const tempCanvas = document.createElement('canvas');
-  tempCanvas.width = pageData.canvas.width;
-  tempCanvas.height = pageData.canvas.height;
-  const tempCtx = tempCanvas.getContext('2d');
-
-  tempCtx.drawImage(pageData.canvas, 0, 0);
-
-  for (const annot of pageData.annotations) {
-    if (annot.type === 'rectangle') {
-      tempCtx.strokeStyle = annot.color;
-      tempCtx.lineWidth = 3;
-      tempCtx.beginPath();
-      tempCtx.rect(annot.x, annot.y, annot.width, annot.height);
-      tempCtx.stroke();
-    } else if (annot.type === 'highlight') {
-      tempCtx.fillStyle = annot.color + '40';
-      tempCtx.fillRect(annot.x, annot.y, annot.width, annot.height);
-    } else if (annot.type === 'line') {
-      tempCtx.strokeStyle = annot.color;
-      tempCtx.lineWidth = 3;
-      tempCtx.lineCap = 'round';
-      tempCtx.beginPath();
-      tempCtx.moveTo(annot.x1, annot.y1);
-      tempCtx.lineTo(annot.x2, annot.y2);
-      tempCtx.stroke();
-      const headLength = 15;
-      const angle = Math.atan2(annot.y2 - annot.y1, annot.x2 - annot.x1);
-      tempCtx.fillStyle = annot.color;
-      tempCtx.beginPath();
-      tempCtx.moveTo(annot.x2, annot.y2);
-      tempCtx.lineTo(
-        annot.x2 - headLength * Math.cos(angle - Math.PI / 6),
-        annot.y2 - headLength * Math.sin(angle - Math.PI / 6)
-      );
-      tempCtx.lineTo(
-        annot.x2 - headLength * Math.cos(angle + Math.PI / 6),
-        annot.y2 - headLength * Math.sin(angle + Math.PI / 6)
-      );
-      tempCtx.closePath();
-      tempCtx.fill();
-    } else if (annot.type === 'pen') {
-      if (annot.points.length < 2) continue;
-      tempCtx.strokeStyle = annot.color;
-      tempCtx.lineWidth = 3;
-      tempCtx.lineCap = 'round';
-      tempCtx.lineJoin = 'round';
-      tempCtx.beginPath();
-      tempCtx.moveTo(annot.points[0].x, annot.points[0].y);
-      for (let i = 1; i < annot.points.length; i++) {
-        tempCtx.lineTo(annot.points[i].x, annot.points[i].y);
-      }
-      tempCtx.stroke();
-    } else if (annot.type === 'text') {
-      tempCtx.fillStyle = annot.color;
-      tempCtx.font = `${annot.fontSize || 24}px Arial`;
-      tempCtx.fillText(annot.text, annot.x, annot.y);
+    while (pageRenderQueue.length > 0 || isProcessingQueue) {
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
+
+    const hasAnnotations = editorPages.some(page => page.annotations && page.annotations.length > 0);
+
+    if (!hasAnnotations) {
+      const saveRes = await window.electronAPI.saveBytes('edited.pdf', window.originalPdfBytes);
+      if (saveRes.success) {
+        statusEl && (statusEl.innerText = `${LANG[currentLang].saved} ${saveRes.path}`);
+      } else {
+        statusEl && (statusEl.innerText = 'Save canceled');
+      }
+      return;
+    }
+
+    const pdfDoc = await PDFLib.PDFDocument.create();
+
+    // Define A4 dimensions in points
+    const A4_WIDTH = 595.28;
+    const A4_HEIGHT = 841.89;
+
+    for (let i = 0; i < editorPages.length; i++) {
+      const pageData = editorPages[i];
+
+      if (!pageData.canvas) continue;
+
+      const hasPageAnnotations = pageData.annotations && pageData.annotations.length > 0;
+
+      // Create temp canvas for this page at FULL resolution
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = pageData.canvas.width; // Full resolution, no scaling down
+      tempCanvas.height = pageData.canvas.height;
+      const tempCtx = tempCanvas.getContext('2d', {
+        alpha: false,
+        desynchronized: true,
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high'
+      });
+
+      // Draw the base page
+      tempCtx.drawImage(pageData.canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+
+      // Draw annotations if present
+      if (hasPageAnnotations) {
+        for (const annot of pageData.annotations) {
+          if (annot.type === 'rectangle') {
+            tempCtx.strokeStyle = annot.color;
+            tempCtx.lineWidth = 3;
+            tempCtx.beginPath();
+            tempCtx.rect(annot.x, annot.y, annot.width, annot.height);
+            tempCtx.stroke();
+          } else if (annot.type === 'highlight') {
+            tempCtx.fillStyle = annot.color + '40';
+            tempCtx.fillRect(annot.x, annot.y, annot.width, annot.height);
+          } else if (annot.type === 'line') {
+            tempCtx.strokeStyle = annot.color;
+            tempCtx.lineWidth = 3;
+            tempCtx.lineCap = 'round';
+            tempCtx.beginPath();
+            tempCtx.moveTo(annot.x1, annot.y1);
+            tempCtx.lineTo(annot.x2, annot.y2);
+            tempCtx.stroke();
+
+            const headLength = 15;
+            const angle = Math.atan2(annot.y2 - annot.y1, annot.x2 - annot.x1);
+            tempCtx.fillStyle = annot.color;
+            tempCtx.beginPath();
+            tempCtx.moveTo(annot.x2, annot.y2);
+            tempCtx.lineTo(
+              annot.x2 - headLength * Math.cos(angle - Math.PI / 6),
+              annot.y2 - headLength * Math.sin(angle - Math.PI / 6)
+            );
+            tempCtx.lineTo(
+              annot.x2 - headLength * Math.cos(angle + Math.PI / 6),
+              annot.y2 - headLength * Math.sin(angle + Math.PI / 6)
+            );
+            tempCtx.closePath();
+            tempCtx.fill();
+          } else if (annot.type === 'pen') {
+            if (annot.points.length < 2) continue;
+            tempCtx.strokeStyle = annot.color;
+            tempCtx.lineWidth = 3;
+            tempCtx.lineCap = 'round';
+            tempCtx.lineJoin = 'round';
+            tempCtx.beginPath();
+            tempCtx.moveTo(annot.points[0].x, annot.points[0].y);
+            for (let j = 1; j < annot.points.length; j++) {
+              tempCtx.lineTo(annot.points[j].x, annot.points[j].y);
+            }
+            tempCtx.stroke();
+          } else if (annot.type === 'text') {
+            tempCtx.fillStyle = annot.color;
+            tempCtx.font = `${annot.fontSize || 24}px Arial`;
+            tempCtx.fillText(annot.text, annot.x, annot.y);
+          }
+        }
+      }
+
+      // Convert to high-quality PNG for better clarity
+      const dataUrl = tempCanvas.toDataURL('image/png');
+      const bin = atob(dataUrl.split(',')[1]);
+      const arr = new Uint8Array(bin.length);
+      for (let j = 0; j < bin.length; j++) {
+        arr[j] = bin.charCodeAt(j);
+      }
+
+      // Embed as PNG to preserve quality
+      const img = await pdfDoc.embedPng(arr);
+
+      // Get original dimensions
+      const imgWidth = img.width;
+      const imgHeight = img.height;
+
+      // Calculate scale to fit A4 while maintaining aspect ratio
+      const scaleToFitWidth = A4_WIDTH / imgWidth;
+      const scaleToFitHeight = A4_HEIGHT / imgHeight;
+      const finalScale = Math.min(scaleToFitWidth, scaleToFitHeight);
+
+      const scaledWidth = imgWidth * finalScale;
+      const scaledHeight = imgHeight * finalScale;
+
+      // Center on A4 page
+      const x = (A4_WIDTH - scaledWidth) / 2;
+      const y = (A4_HEIGHT - scaledHeight) / 2;
+
+      const page = pdfDoc.addPage([A4_WIDTH, A4_HEIGHT]);
+      page.drawImage(img, { x, y, width: scaledWidth, height: scaledHeight });
+
+      // Clean up
+      tempCanvas.width = 0;
+      tempCanvas.height = 0;
+
+      // Update progress
+      const progress = Math.round(((i + 1) / editorPages.length) * 100);
+      if (statusEl) {
+        statusEl.innerText = `${LANG[currentLang].status_exporting} ${progress}%`;
+      }
+
+      if (i % 3 === 0) {
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+    }
+
+    const bytes = await pdfDoc.save({
+      useObjectStreams: false,
+      addDefaultPage: false
+    });
+    const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+
+    const saveRes = await window.electronAPI.saveBytes('edited.pdf', u8);
+    if (saveRes.success) {
+      statusEl && (statusEl.innerText = `${LANG[currentLang].saved} ${saveRes.path}`);
+    } else {
+      statusEl && (statusEl.innerText = 'Save canceled');
+    }
+  } catch (err) {
+    console.error('Save error:', err);
+    statusEl && (statusEl.innerText = 'Error: ' + (err.message || String(err)));
+  } finally {
+    setTimeout(() => statusEl && (statusEl.innerText = LANG[currentLang].status_idle), 2000);
   }
-
-  const dataUrl = tempCanvas.toDataURL('image/png');
-  const bin = atob(dataUrl.split(',')[1]);
-  const arr = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) {
-    arr[i] = bin.charCodeAt(i);
-  }
-
-  const img = await pdfDoc.embedPng(arr);
-  const { width, height } = img.scale(1);
-  const page = pdfDoc.addPage([width, height]);
-  page.drawImage(img, { x: 0, y: 0, width, height });
-}
-
-const bytes = await pdfDoc.save();
-const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-
-const saveRes = await window.electronAPI.saveBytes('edited.pdf', u8);
-if (saveRes.success) {
-  statusEl && (statusEl.innerText = `${LANG[currentLang].saved} ${saveRes.path}`);
-} else {
-  statusEl && (statusEl.innerText = 'Save canceled');
-}
-} catch (err) {
-console.error('Save error:', err);
-statusEl && (statusEl.innerText = 'Error: ' + (err.message || String(err)));
-} finally {
-setTimeout(() => statusEl && (statusEl.innerText = LANG[currentLang].status_idle), 2000);
-}
 });
 window.addEventListener('resize', () => {
 if (editorPage.style.display !== 'none' && currentPageIndex >= 0) {
@@ -1262,6 +1428,7 @@ e.preventDefault();
 annotCanvas.addEventListener('mousemove', (e) => {
 if (!annotMouseDown) return;
 const { x, y } = getAnnotCoords(e);
+
 if (currentTool === 'pen') {
   currentPath.push({ x, y });
   renderAnnotations();
@@ -1305,6 +1472,7 @@ if (!annotMouseDown) return;
 annotMouseDown = false;
 const page = editorPages[currentPageIndex];
 if (!page) return;
+
 const { x, y } = getAnnotCoords(e);
 
 saveToUndoStack(currentPageIndex);
@@ -1471,7 +1639,8 @@ ctx.rect(tempAnnotation.x, tempAnnotation.y, tempAnnotation.width, tempAnnotatio
 ctx.stroke();
 } else if (tempAnnotation.type === 'highlight') {
 ctx.fillStyle = tempAnnotation.color + '40';
-ctx.fillRect(tempAnnotation.x, tempAnnotation.y, tempAnnotation.width, tempAnnotation.height);RetryUMContinue} else if (tempAnnotation.type === 'line') {
+ctx.fillRect(tempAnnotation.x, tempAnnotation.y, tempAnnotation.width, tempAnnotation.height);
+} else if (tempAnnotation.type === 'line') {
 ctx.strokeStyle = tempAnnotation.color;
 ctx.lineWidth = 3;
 ctx.lineCap = 'round';
@@ -1487,4 +1656,3 @@ drawArrowHead(ctx, tempAnnotation.x1, tempAnnotation.y1, tempAnnotation.x2, temp
 applyLanguage();
 updateToolUI();
 updateColorUI();
-

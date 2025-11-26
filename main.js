@@ -33,14 +33,13 @@ app.on('activate', () => {
 	if (BrowserWindow.getAllWindows().length === 0) createWindow()
 })
 
-// Helper: normalize buffer-like inputs
+// Helper: normalize buffer-like inputs (optimized)
 function normalizeBuffer(bufLike) {
 	if (!bufLike) return Buffer.alloc(0)
-	if (Array.isArray(bufLike)) return Buffer.from(bufLike)
-	if (bufLike instanceof ArrayBuffer)
-		return Buffer.from(new Uint8Array(bufLike))
-	if (ArrayBuffer.isView(bufLike)) return Buffer.from(bufLike)
 	if (Buffer.isBuffer(bufLike)) return bufLike
+	if (Array.isArray(bufLike)) return Buffer.from(bufLike)
+	if (bufLike instanceof ArrayBuffer) return Buffer.from(bufLike)
+	if (ArrayBuffer.isView(bufLike)) return Buffer.from(bufLike.buffer, bufLike.byteOffset, bufLike.byteLength)
 	try {
 		return Buffer.from(bufLike)
 	} catch (e) {
@@ -48,7 +47,7 @@ function normalizeBuffer(bufLike) {
 	}
 }
 
-// Optimized merge handler with better error handling
+// Optimized merge handler with parallel processing
 ipcMain.handle('merge-files', async (event, filesArray) => {
 	try {
 		if (!filesArray || filesArray.length < 1)
@@ -56,80 +55,105 @@ ipcMain.handle('merge-files', async (event, filesArray) => {
 
 		const mergedPdf = await PDFDocument.create()
 
-		// Process files sequentially but with optimized loading
-		for (const f of filesArray) {
-			const name = f.name || 'unknown'
-			const type = f.type || ''
-			const buffer = normalizeBuffer(f.buffer)
-			if (!buffer || buffer.length === 0) continue
+		// Process files in parallel batches of 3
+		const BATCH_SIZE = 3
+		for (let i = 0; i < filesArray.length; i += BATCH_SIZE) {
+			const batch = filesArray.slice(i, i + BATCH_SIZE)
 
-			if (type === 'application/pdf' || /\.pdf$/i.test(name)) {
-				try {
-					const pdfDoc = await PDFDocument.load(buffer, {
-						ignoreEncryption: true,
-						updateMetadata: false // Skip metadata updates for faster processing
-					})
-					const pageIndices = pdfDoc.getPageIndices()
-					const copied = await mergedPdf.copyPages(pdfDoc, pageIndices)
-					copied.forEach(p => mergedPdf.addPage(p))
-				} catch (pdfErr) {
-					console.error('Error loading PDF:', name, pdfErr)
-					continue
-				}
-			} else if (
-				type.startsWith('image/') ||
-				/\.(png|jpe?g|jpg)$/i.test(name)
-			) {
-				try {
-					let embedded
-					if (type === 'image/jpeg' || /\.jpe?g|jpg$/i.test(name)) {
-						embedded = await mergedPdf.embedJpg(buffer)
-					} else {
-						embedded = await mergedPdf
-							.embedPng(buffer)
-							.catch(async () => {
-								return mergedPdf.embedJpg(buffer)
+			const processedPages = await Promise.all(
+				batch.map(async (f) => {
+					const name = f.name || 'unknown'
+					const type = f.type || ''
+					const buffer = normalizeBuffer(f.buffer)
+					if (!buffer || buffer.length === 0) return null
+
+					try {
+						if (type === 'application/pdf' || /\.pdf$/i.test(name)) {
+							// Load PDF with optimizations
+							const pdfDoc = await PDFDocument.load(buffer, {
+								ignoreEncryption: true,
+								updateMetadata: false,
+								throwOnInvalidObject: false
 							})
+							return { type: 'pdf', doc: pdfDoc }
+						} else if (type.startsWith('image/') || /\.(png|jpe?g|jpg)$/i.test(name)) {
+							// Embed image
+							let embedded
+							if (type === 'image/jpeg' || /\.jpe?g|jpg$/i.test(name)) {
+								embedded = await mergedPdf.embedJpg(buffer)
+							} else {
+								try {
+									embedded = await mergedPdf.embedPng(buffer)
+								} catch {
+									embedded = await mergedPdf.embedJpg(buffer)
+								}
+							}
+
+							// Calculate scaling
+							const imgWidth = embedded.width
+							const imgHeight = embedded.height
+							const maxWidth = A4_WIDTH - (2 * MARGIN)
+							const maxHeight = A4_HEIGHT - (2 * MARGIN)
+
+							const scaleX = maxWidth / imgWidth
+							const scaleY = maxHeight / imgHeight
+							const scale = Math.min(scaleX, scaleY)
+
+							const scaledWidth = imgWidth * scale
+							const scaledHeight = imgHeight * scale
+
+							const x = (A4_WIDTH - scaledWidth) / 2
+							const y = (A4_HEIGHT - scaledHeight) / 2
+
+							return {
+								type: 'image',
+								embedded,
+								x,
+								y,
+								width: scaledWidth,
+								height: scaledHeight
+							}
+						}
+					} catch (err) {
+						console.error('Error processing file:', name, err.message)
+						return null
 					}
 
-					// Calculate scaling to fit A4 with margins
-					const imgWidth = embedded.width
-					const imgHeight = embedded.height
-					const maxWidth = A4_WIDTH - (2 * MARGIN)
-					const maxHeight = A4_HEIGHT - (2 * MARGIN)
+					return null
+				})
+			)
 
-					// Calculate scale to fit within margins while maintaining aspect ratio
-					const scaleX = maxWidth / imgWidth
-					const scaleY = maxHeight / imgHeight
-					const scale = Math.min(scaleX, scaleY)
+			// Add processed pages to merged PDF
+			for (const processed of processedPages) {
+				if (!processed) continue
 
-					const scaledWidth = imgWidth * scale
-					const scaledHeight = imgHeight * scale
-
-					// Center the image on the page
-					const x = (A4_WIDTH - scaledWidth) / 2
-					const y = (A4_HEIGHT - scaledHeight) / 2
-
-					// Create A4 page
+				if (processed.type === 'pdf') {
+					const pageIndices = processed.doc.getPageIndices()
+					const copied = await mergedPdf.copyPages(processed.doc, pageIndices)
+					copied.forEach(p => mergedPdf.addPage(p))
+				} else if (processed.type === 'image') {
 					const page = mergedPdf.addPage([A4_WIDTH, A4_HEIGHT])
-
-					// Draw image centered and scaled
-					page.drawImage(embedded, {
-						x: x,
-						y: y,
-						width: scaledWidth,
-						height: scaledHeight,
+					page.drawImage(processed.embedded, {
+						x: processed.x,
+						y: processed.y,
+						width: processed.width,
+						height: processed.height,
 					})
-				} catch (imgErr) {
-					console.warn('Image embed failed:', name, imgErr)
 				}
 			}
+
+			// Send progress update
+			const progress = Math.round(((i + batch.length) / filesArray.length) * 100)
+			event.sender.send('merge-progress', progress)
 		}
 
 		// Save with optimizations
 		const mergedBytes = await mergedPdf.save({
-			useObjectStreams: false // Faster saving
+			useObjectStreams: false,
+			addDefaultPage: false,
+			objectsPerTick: 50
 		})
+
 		return { success: true, bytes: Array.from(mergedBytes) }
 	} catch (err) {
 		console.error('Merge error:', err)
@@ -147,7 +171,6 @@ ipcMain.handle('save-bytes', async (event, { fileName, bytes }) => {
 		})
 		if (canceled || !filePath) return { success: false, message: 'canceled' }
 
-		// Use writeFile with promises for better performance
 		await fs.promises.writeFile(filePath, Buffer.from(bytes))
 		return { success: true, path: filePath }
 	} catch (err) {
