@@ -48,7 +48,7 @@ function normalizeBuffer(bufLike) {
 	}
 }
 
-// Merge handler: returns merged PDF bytes as plain array
+// Optimized merge handler with better error handling
 ipcMain.handle('merge-files', async (event, filesArray) => {
 	try {
 		if (!filesArray || filesArray.length < 1)
@@ -56,6 +56,7 @@ ipcMain.handle('merge-files', async (event, filesArray) => {
 
 		const mergedPdf = await PDFDocument.create()
 
+		// Process files sequentially but with optimized loading
 		for (const f of filesArray) {
 			const name = f.name || 'unknown'
 			const type = f.type || ''
@@ -63,12 +64,18 @@ ipcMain.handle('merge-files', async (event, filesArray) => {
 			if (!buffer || buffer.length === 0) continue
 
 			if (type === 'application/pdf' || /\.pdf$/i.test(name)) {
-				const pdfDoc = await PDFDocument.load(buffer)
-				const copied = await mergedPdf.copyPages(
-					pdfDoc,
-					pdfDoc.getPageIndices()
-				)
-				copied.forEach(p => mergedPdf.addPage(p))
+				try {
+					const pdfDoc = await PDFDocument.load(buffer, {
+						ignoreEncryption: true,
+						updateMetadata: false // Skip metadata updates for faster processing
+					})
+					const pageIndices = pdfDoc.getPageIndices()
+					const copied = await mergedPdf.copyPages(pdfDoc, pageIndices)
+					copied.forEach(p => mergedPdf.addPage(p))
+				} catch (pdfErr) {
+					console.error('Error loading PDF:', name, pdfErr)
+					continue
+				}
 			} else if (
 				type.startsWith('image/') ||
 				/\.(png|jpe?g|jpg)$/i.test(name)
@@ -119,7 +126,10 @@ ipcMain.handle('merge-files', async (event, filesArray) => {
 			}
 		}
 
-		const mergedBytes = await mergedPdf.save()
+		// Save with optimizations
+		const mergedBytes = await mergedPdf.save({
+			useObjectStreams: false // Faster saving
+		})
 		return { success: true, bytes: Array.from(mergedBytes) }
 	} catch (err) {
 		console.error('Merge error:', err)
@@ -127,7 +137,7 @@ ipcMain.handle('merge-files', async (event, filesArray) => {
 	}
 })
 
-// Save arbitrary bytes as file (final save for edited PDF)
+// Save arbitrary bytes as file
 ipcMain.handle('save-bytes', async (event, { fileName, bytes }) => {
 	try {
 		const { canceled, filePath } = await dialog.showSaveDialog({
@@ -136,7 +146,9 @@ ipcMain.handle('save-bytes', async (event, { fileName, bytes }) => {
 			filters: [{ name: 'PDF', extensions: ['pdf'] }],
 		})
 		if (canceled || !filePath) return { success: false, message: 'canceled' }
-		fs.writeFileSync(filePath, Buffer.from(bytes))
+
+		// Use writeFile with promises for better performance
+		await fs.promises.writeFile(filePath, Buffer.from(bytes))
 		return { success: true, path: filePath }
 	} catch (err) {
 		console.error('save-bytes error', err)

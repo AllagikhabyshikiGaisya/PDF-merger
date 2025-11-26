@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 	<head>
 		<meta charset="utf-8" />
 		<title>PDF Merger & Editor</title>
@@ -10,15 +10,17 @@
 		<link rel="stylesheet" href="style.css" />
 	</head>
 	<body>
-		<div class="app">
-			<div id="langToggle" class="lang-toggle">🇯🇵 日本語</div>
+		<!-- Language Toggle -->
+		<div id="langToggle" class="lang-toggle" role="button" tabindex="0" aria-label="Switch language">🇯🇵 日本語</div>
 
+		<!-- Merger Page -->
+		<div id="mergerPage" class="app">
 			<header class="topbar">
 				<div class="brand">
-					<div class="logo">📎</div>
+					<div class="logo" aria-hidden="true">📎</div>
 					<div>
 						<h1 id="title">PDF結合ツール</h1>
-						<p class="subtitle" id="subtitle">ローカルで高速結合・編集</p>
+						<p class="subtitle" id="subtitle">ローカルで高速結合</p>
 					</div>
 				</div>
 				<div class="controls">
@@ -27,25 +29,23 @@
 						type="file"
 						accept=".pdf,.png,.jpg,.jpeg"
 						multiple
+						aria-label="Select PDF or image files"
 					/>
-					<label class="btn primary" for="fileElem" id="addBtn"
-						>ファイル追加</label
-					>
+					<label class="btn primary" for="fileElem" id="addBtn">ファイル追加</label>
 					<button class="btn" id="clearBtn">全削除</button>
-					<button class="btn primary" id="mergeEditBtn">結合して編集</button>
 				</div>
 			</header>
 
 			<main>
-				<section id="drop-area" class="drop-area">
+				<section id="drop-area" class="drop-area" role="region" aria-label="File upload area">
 					<div class="drop-inner">
-						<div class="drop-icon">⬇️</div>
+						<div class="drop-icon" aria-hidden="true">⬇️</div>
 						<div class="drop-text" id="dropText">
 							ここにドラッグ＆ドロップ または「ファイル追加」
 						</div>
 					</div>
 
-					<div id="filesList" class="files-grid"></div>
+					<div id="filesList" class="files-grid" role="list"></div>
 				</section>
 
 				<aside class="merge-panel">
@@ -54,7 +54,8 @@
 						<div id="totalsize">0 KB</div>
 					</div>
 					<button class="btn big" id="mergeBtn">結合する(保存のみ)</button>
-					<div id="status" class="status">
+					<button class="btn big green" id="mergeEditBtn">結合して編集</button>
+					<div id="status" class="status" role="status" aria-live="polite">
 						すべてPC内で処理(アップロードなし)
 					</div>
 				</aside>
@@ -62,86 +63,126 @@
 
 			<footer class="footer">
 				<small id="footerText">ドラッグで並び替え、×で削除できます。</small>
-        <div class="developer-credit">
-        <small><strong>Allagi</strong> Original by <strong>Utsav Adhikari</strong> </small>
-      </div>
+				<div class="developer-credit">
+					<small><strong>Allagi</strong> Original by <strong>Utsav Adhikari</strong></small>
+				</div>
 			</footer>
 		</div>
 
-		<!-- Editor overlay -->
-		<div id="editorOverlay" class="editor-overlay hidden" aria-hidden="true">
-			<div class="editor-topbar">
-				<div class="editor-tools-left">
-					<button class="tool" data-tool="pointer" title="Pointer">
-						<img src="icons/pointer.svg" alt="Pointer" />
-					</button>
-					<button class="tool" data-tool="rect" title="Rectangle">
-						<img src="icons/square.svg" alt="Rectangle" />
-					</button>
-					<button class="tool" data-tool="arrow" title="Arrow">
-						<img src="icons/arrow.svg" alt="Arrow" />
-					</button>
-					<button class="tool" data-tool="pen" title="Pen">
-						<img src="icons/pen.svg" alt="Pen" />
-					</button>
-					<button class="tool" data-tool="text" title="Text">
-						<img src="icons/type.svg" alt="Text" />
-					</button>
-					<button class="tool" data-tool="highlight" title="Highlight">
-						<img src="icons/highlighter.svg" alt="Highlight" />
-					</button>
+		<!-- Editor Page -->
+		<div id="editorPage" class="editor-page" style="display: none;">
+			<div class="editor-content">
+				<aside class="thumbnail-sidebar">
+					<div id="thumbnailContainer" class="thumbnail-container"></div>
+				</aside>
 
-					<!-- Color Picker Panel -->
-					<div class="color-picker-panel">
-						<div class="color-label">Color:</div>
-						<div class="color-options">
-							<button class="color-btn active" data-color="#ff0000" style="background: #ff0000;" title="Red"></button>
-							<button class="color-btn" data-color="#0b5fff" style="background: #0b5fff;" title="Blue"></button>
-							<button class="color-btn" data-color="#10b981" style="background: #10b981;" title="Green"></button>
-							<button class="color-btn" data-color="#fbbf24" style="background: #fbbf24;" title="Yellow"></button>
-							<button class="color-btn" data-color="#f97316" style="background: #f97316;" title="Orange"></button>
-							<button class="color-btn" data-color="#a855f7" style="background: #a855f7;" title="Purple"></button>
-							<button class="color-btn" data-color="#ec4899" style="background: #ec4899;" title="Pink"></button>
-							<button class="color-btn" data-color="#000000" style="background: #000000;" title="Black"></button>
+				<main class="canvas-area">
+					<div class="canvas-container">
+						<canvas id="mainCanvas"></canvas>
+						<canvas id="annotCanvas"></canvas>
+					</div>
+				</main>
+
+				<!-- Right Sidebar Toolbar -->
+				<aside class="editor-toolbar-sidebar">
+					<!-- Navigation Actions -->
+					<div class="toolbar-section">
+						<div class="toolbar-section-title">Navigation</div>
+						<div class="editor-actions">
+							<button class="btn" id="backToMerger">結合ページに戻る</button>
+							<button class="btn green" id="savePdf">PDFを保存</button>
 						</div>
 					</div>
-				</div>
 
-				<div class="editor-tools-right">
-					<!-- Zoom controls (kept) -->
-					<div class="zoom-controls">
-						<button id="zoomOutBtn" class="tool" title="Zoom out">−</button>
-						<input id="zoomSlider" type="range" min="25" max="300" step="5" value="100" />
-						<button id="zoomInBtn" class="tool" title="Zoom in">＋</button>
-						<span id="zoomDisplay">100%</span>
+					<!-- Zoom Controls -->
+					<div class="toolbar-section">
+						<div class="toolbar-section-title">Zoom</div>
+						<div class="zoom-controls">
+							<div class="zoom-display" id="zoomDisplay">100%</div>
+							<div class="zoom-btn-row">
+								<button class="btn zoom-btn" id="zoomOutBtn" title="Zoom Out">−</button>
+								<button class="btn zoom-btn" id="resetZoomBtn" title="Reset Zoom">⟲</button>
+								<button class="btn zoom-btn" id="zoomInBtn" title="Zoom In">+</button>
+							</div>
+						</div>
 					</div>
 
-					<button class="tool" id="undoBtn" title="Undo">
-						<img src="icons/undo.svg" alt="Undo" />
-					</button>
-					<button class="tool" id="redoBtn" title="Redo">
-						<img src="icons/redo.svg" alt="Redo" />
-					</button>
+					<!-- Annotation Tools -->
+					<div class="toolbar-section">
+						<div class="toolbar-section-title">Tools</div>
+						<div class="annotation-tools">
+							<div class="tool-row">
+								<button class="tool-btn active" data-tool="pointer" title="Pointer">
+									<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/>
+									</svg>
+								</button>
+								<button class="tool-btn" data-tool="rectangle" title="Rectangle">
+									<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<rect x="3" y="3" width="18" height="18" rx="2"/>
+									</svg>
+								</button>
+								<button class="tool-btn" data-tool="highlight" title="Highlight">
+									<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+										<path d="M17.7 4.3a1 1 0 0 1 0 1.4l-11 11a1 1 0 0 1-1.4 0l-2-2a1 1 0 0 1 1.4-1.4l1.3 1.3 10.3-10.3a1 1 0 0 1 1.4 0z"/>
+										<path d="M2 20h20v2H2z" opacity="0.5"/>
+									</svg>
+								</button>
+								<button class="tool-btn" data-tool="line" title="Line">
+									<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<line x1="5" y1="19" x2="19" y2="5"/>
+									</svg>
+								</button>
+								<button class="tool-btn" data-tool="pen" title="Pen">
+									<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<path d="M12 19l7-7 3 3-7 7-3-3z"/>
+										<path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/>
+										<path d="M2 2l7.586 7.586"/>
+									</svg>
+								</button>
+								<button class="tool-btn" data-tool="text" title="Text">
+									<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<polyline points="4 7 4 4 20 4 20 7"/>
+										<line x1="9" y1="20" x2="15" y2="20"/>
+										<line x1="12" y1="4" x2="12" y2="20"/>
+									</svg>
+								</button>
+							</div>
 
-					<!-- Save icon only — green styled by CSS -->
-					<button class="tool save-pdf-btn" id="doneBtn" title="Save">
-						<img src="icons/save.svg" alt="Save" />
-					</button>
+							<div class="tool-divider"></div>
 
-					<!-- Close icon only — red styled by CSS -->
-					<button class="tool close-btn" id="closeEditor" title="Close">
-						<img src="icons/x.svg" alt="Close" />
-					</button>
-				</div>
-			</div>
+							<div class="tool-row">
+								<button class="tool-btn" id="undoBtn" title="Undo">
+									<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<path d="M3 7v6h6"/>
+										<path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"/>
+									</svg>
+								</button>
+								<button class="tool-btn" id="redoBtn" title="Redo">
+									<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<path d="M21 7v6h-6"/>
+										<path d="M3 17a9 9 0 019-9 9 9 0 016 2.3l3 2.7"/>
+									</svg>
+								</button>
+							</div>
+						</div>
+					</div>
 
-			<div class="editor-body">
-				<!-- Thumbnail sidebar visible by default -->
-				<div id="thumbSidebar" class="thumb-sidebar" aria-hidden="false">
-					<div class="thumbs-inner" id="thumbsInner"></div>
-				</div>
-
-				<div id="pageContainer" class="page-container"></div>
+					<!-- Color Picker -->
+					<div class="toolbar-section">
+						<div class="toolbar-section-title">Colors</div>
+						<div class="color-picker">
+							<button class="color-btn active" data-color="#ff0000" style="background: #ff0000;" title="Red"></button>
+							<button class="color-btn" data-color="#00ff00" style="background: #00ff00;" title="Green"></button>
+							<button class="color-btn" data-color="#0000ff" style="background: #0000ff;" title="Blue"></button>
+							<button class="color-btn" data-color="#ffff00" style="background: #ffff00;" title="Yellow"></button>
+							<button class="color-btn" data-color="#ff00ff" style="background: #ff00ff;" title="Magenta"></button>
+							<button class="color-btn" data-color="#00ffff" style="background: #00ffff;" title="Cyan"></button>
+							<button class="color-btn" data-color="#000000" style="background: #000000;" title="Black"></button>
+							<button class="color-btn" data-color="#ffffff" style="background: #ffffff; border: 1px solid #ccc;" title="White"></button>
+						</div>
+					</div>
+				</aside>
 			</div>
 		</div>
 
