@@ -5,7 +5,7 @@ const path = require('path');
 const pdfPath = path.join(__dirname, 'node_modules/pdfjs-dist/build/pdf.mjs');
 const workerPath = path.join(__dirname, 'node_modules/pdfjs-dist/build/pdf.worker.mjs');
 
-// We'll load pdf-lib dynamically in the renderer to avoid CommonJS issues
+// We'll load pdf-lib dynamically in the renCommonJS issues
 const pdfLibPath = path.join(__dirname, 'node_modules/pdf-lib/dist/pdf-lib.min.js');
 
 contextBridge.exposeInMainWorld("libs", {
