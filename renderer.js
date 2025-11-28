@@ -5,7 +5,7 @@ const { pdfjsDistPath, pdfjsWorkerPath, pdfLibPath } = window.libs || {};
 // Load pdf.js
 const pdfjsLib = await import(`file://${pdfjsDistPath}`);
 pdfjsLib.GlobalWorkerOptions.workerSrc = `file://${pdfjsWorkerPath}`;
-
+const cmapUrl = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.394/cmaps/';
 // Lazy load pdf-lib only when needed
 let PDFLib = null;
 let pdfLibLoading = false;
@@ -409,7 +409,7 @@ async function validatePdfBytes(bytesLike) {
 
 async function tryRecoverPdfWithPdfJs(uint8arr) {
   try {
-    const loadingTask = pdfjsLib.getDocument({ data: uint8arr, verbosity: 0 });
+    const loadingTask = pdfjsLib.getDocument({ data: uint8arr, verbosity: 0, cMapUrl:cmapUrl,cMapPacked:true });
     const pdf = await loadingTask.promise;
     const pageCount = pdf.numPages;
     if (!pageCount || pageCount < 1) return null;
