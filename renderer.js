@@ -5,7 +5,13 @@ const { pdfjsDistPath, pdfjsWorkerPath, pdfLibPath } = window.libs || {};
 // Load pdf.js
 const pdfjsLib = await import(`file://${pdfjsDistPath}`);
 pdfjsLib.GlobalWorkerOptions.workerSrc = `file://${pdfjsWorkerPath}`;
-const cmapUrl = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.394/cmaps/';
+
+// CMap configuration for proper font rendering (especially CJK fonts)
+const CMAP_URL = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.394/cmaps/';
+const CMAP_PACKED = true;
+
+// Suppress verbose warnings
+pdfjsLib.GlobalWorkerOptions.verbosity = 0;
 // Lazy load pdf-lib only when needed
 let PDFLib = null;
 let pdfLibLoading = false;
@@ -409,7 +415,14 @@ async function validatePdfBytes(bytesLike) {
 
 async function tryRecoverPdfWithPdfJs(uint8arr) {
   try {
-    const loadingTask = pdfjsLib.getDocument({ data: uint8arr, verbosity: 0, cMapUrl:cmapUrl,cMapPacked:true });
+    const loadingTask = pdfjsLib.getDocument({
+      data: uint8arr,
+      verbosity: 0,
+      cMapUrl: CMAP_URL,
+      cMapPacked: CMAP_PACKED,
+      useSystemFonts: false,
+      disableFontFace: false
+    });
     const pdf = await loadingTask.promise;
     const pageCount = pdf.numPages;
     if (!pageCount || pageCount < 1) return null;
@@ -699,8 +712,16 @@ async function openEditor(pdfBytes) {
   const L = LANG[currentLang];
   statusEl && (statusEl.innerText = L.loadingPages);
 
-  // Load PDF
-  const loadingTask = pdfjsLib.getDocument({ data: pdfBytes });
+// Load PDF
+  const loadingTask = pdfjsLib.getDocument({
+    data: pdfBytes,
+    verbosity: 0,
+    cMapUrl: CMAP_URL,
+    cMapPacked: CMAP_PACKED,
+    standardFontDataUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.4.394/standard_fonts/',
+    useSystemFonts: false,
+    disableFontFace: false
+  });
   const pdf = await loadingTask.promise;
   loadedPdfDocument = pdf;
   const pageCount = pdf.numPages;
