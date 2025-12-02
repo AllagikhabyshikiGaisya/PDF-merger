@@ -1,32 +1,125 @@
 {
-	"name": "pdf-merger-electron",
-	"version": "2.0.0",
-	"description": "Local PDF + Image merger (Electron) - modern UI, optimized binary transfer",
-	"main": "main.js",
-	"author": "Utsav Adhikari",
-	"license": "MIT",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/AllagikhabyshikiGaisya/PDF-merger.git"
-	},
-	"keywords": [
-		"pdf",
-		"merger",
-		"electron",
-		"pdf-lib",
-		"japanese",
-		"local"
-	],
-	"scripts": {
-		"start": "electron .",
-		"package-win": "npx electron-packager . PDFMerger --platform=win32 --arch=ia32,x64 --out=dist --overwrite"
-	},
-	"dependencies": {
-		"pdf-lib": "^1.17.1",
-		"pdfjs-dist": "^5.4.394"
-	},
-	"devDependencies": {
-		"electron": "^39.2.1",
-		"electron-packager": "^17.1.0"
-	}
+  "name": "pdf-merger-electron",
+  "version": "2.0.0",
+  "description": "Local PDF + Image merger (Electron) - modern UI, optimized binary transfer",
+  "main": "main.js",
+  "author": {
+    "name": "Utsav Adhikari",
+    "email": "utsavadhikari452@gmail.com"
+  },
+  "license": "MIT",
+  "homepage": "https://github.com/AllagikhabyshikiGaisya/PDF-merger#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AllagikhabyshikiGaisya/PDF-merger.git"
+  },
+  "bugs": {
+    "url": "https://github.com/AllagikhabyshikiGaisya/PDF-merger/issues"
+  },
+  "keywords": [
+    "pdf",
+    "merger",
+    "electron",
+    "pdf-lib",
+    "japanese",
+    "local"
+  ],
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --enalble-logging",
+    "package-win": "npx electron-packager . PDFMerger --platform=win32 --arch=ia32,x64 --out=dist --overwrite",
+    "build": "electron-builder --win --x64",
+    "build:dir": "electron-builder --win --x64 --dir",
+    "build:portable": "electron-builder --win --x64 portable",
+    "build:installer": "electron-builder --win nsis",
+    "build:all": "electron-builder --win --x64",
+    "build:both": "electron-builder --win --x64 --config.nsis.oneClick=false",
+    "publish": "electron-builder --win --x64 --publish always",
+    "clean": "rimraf dist build/win-unpacked"
+  },
+  "build": {
+    "appId": "com.utsavadhikari.pdfmerger",
+    "productName": "PDF Merger",
+    "copyright": "Copyright © 2025 Utsav Adhikari",
+    "compression": "maximum",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "**/*",
+      "!**/{.git,.github,.DS_Store,.vscode,node_modules,dist,build,node_modules/.cache}/**/*",
+      "!README.md",
+      "!build-portable.js",
+      "!generate-icons.js",
+      "!.gitignore"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "publisherName": "Utsav Adhikari",
+      "verifyUpdateCodeSignature": false,
+      "publish": [
+        {
+          "provider": "github",
+          "owner": "AllagikhabyshikiGaisya",
+          "repo": "PDF-merger",
+          "releaseType": "release"
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortCutName": "PDF Merger",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "deleteAppDataOnUninstall": false,
+      "runAfterFinish": true,
+      "menuCategory": "true",
+      "include": "build/installer.nsh",
+      "perMaching": false,
+      "artifactName": "${productName}-Setup-${version}.${ext}",
+      "license": "LICENSE.txt"
+    },
+    "portable": {
+      "artifactName": "PDFMerger-Portable-${version}.${ext}"
+    },
+    "publish": {
+      "provider": "github",
+      "releaseType": "release",
+      "repo": "PDF-merger",
+      "owner": "AllagikhabyshikiGaisya"
+    }
+  },
+  "dependencies": {
+    "electron-log": "^5.4.3",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^5.4.394"
+  },
+  "devDependencies": {
+    "archiver": "^7.0.1",
+    "electron": "^39.2.1",
+    "electron-builder": "^26.0.12",
+    "electron-packager": "^17.1.0",
+    "electron-updater": "^6.6.2"
+  }
 }

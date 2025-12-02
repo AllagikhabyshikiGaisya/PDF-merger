@@ -1,0 +1,74 @@
+// generate-icons.js
+// Generates app icons from a simple design
+
+const fs = require("fs");
+const path = require("path");
+
+// Create build directory if it doesn't exist
+const buildDir = path.join(__dirname, "build");
+if (!fs.existsSync(buildDir)) {
+  fs.mkdirSync(buildDir, { recursive: true });
+}
+
+// SVG icon design (PDF merge symbol)
+const svgIcon = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0b5fff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0945d8;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Main circle background -->
+  <circle cx="256" cy="256" r="240" fill="url(#grad1)"/>
+  
+  <!-- First document (left) -->
+  <g transform="translate(120, 140)">
+    <rect x="0" y="0" width="80" height="110" rx="8" fill="white" opacity="0.9"/>
+    <rect x="10" y="15" width="60" height="4" rx="2" fill="#0b5fff"/>
+    <rect x="10" y="30" width="60" height="4" rx="2" fill="#0b5fff"/>
+    <rect x="10" y="45" width="40" height="4" rx="2" fill="#0b5fff"/>
+    <rect x="10" y="60" width="50" height="4" rx="2" fill="#0b5fff"/>
+  </g>
+  
+  <!-- Second document (right) -->
+  <g transform="translate(220, 140)">
+    <rect x="0" y="0" width="80" height="110" rx="8" fill="white" opacity="0.9"/>
+    <rect x="10" y="15" width="60" height="4" rx="2" fill="#0b5fff"/>
+    <rect x="10" y="30" width="60" height="4" rx="2" fill="#0b5fff"/>
+    <rect x="10" y="45" width="50" height="4" rx="2" fill="#0b5fff"/>
+    <rect x="10" y="60" width="40" height="4" rx="2" fill="#0b5fff"/>
+  </g>
+  
+  <!-- Merge arrow (center) -->
+  <g transform="translate(256, 310)">
+    <!-- Arrow shaft -->
+    <rect x="-3" y="-40" width="6" height="70" rx="3" fill="white"/>
+    <!-- Arrow head -->
+    <polygon points="0,40 -20,15 20,15" fill="white"/>
+  </g>
+  
+  <!-- Bottom merged document -->
+  <g transform="translate(156, 330)">
+    <rect x="0" y="0" width="100" height="130" rx="10" fill="white" opacity="0.95"/>
+    <rect x="12" y="18" width="76" height="5" rx="2.5" fill="#10b981"/>
+    <rect x="12" y="35" width="76" height="5" rx="2.5" fill="#10b981"/>
+    <rect x="12" y="52" width="76" height="5" rx="2.5" fill="#10b981"/>
+    <rect x="12" y="69" width="60" height="5" rx="2.5" fill="#10b981"/>
+    <rect x="12" y="86" width="70" height="5" rx="2.5" fill="#10b981"/>
+    <rect x="12" y="103" width="55" height="5" rx="2.5" fill="#10b981"/>
+  </g>
+  
+  <!-- PDF badge -->
+  <g transform="translate(370, 380)">
+    <circle cx="0" cy="0" r="45" fill="#ff5c5c"/>
+    <text x="0" y="8" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="white" text-anchor="middle">PDF</text>
+  </g>
+</svg>`;
+
+// Save SVG
+const svgPath = path.join(buildDir, "icon.svg");
+fs.writeFileSync(svgPath, svgIcon);
+console.log("✅ SVG icon created:", svgPath);

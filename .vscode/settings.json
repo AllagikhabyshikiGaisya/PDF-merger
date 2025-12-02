@@ -1,0 +1,10 @@
+{
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "files.autoSaveWhenNoErrors": true,
+  "files.autoSaveWorkspaceFilesOnly": true,
+  "notebook.formatOnSave.enabled": true,
+  "editor.formatOnSave": true,
+  "vscode-autosave.debounceMs": 7000,
+  "files.autoSaveDelay": 10000,
+  "vscode-autosave.disableProgressNotifications": true
+}
