@@ -1,0 +1,7 @@
+{
+  "watch": ["main.js", "preload.js"],
+  "ignore": ["node_modules/**", "dist/**", "build/**", ".git/**", "*.log"],
+  "ext": "js,json",
+  "delay": 500,
+  "verbos": false
+}

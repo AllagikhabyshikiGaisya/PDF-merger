@@ -3,10 +3,40 @@ const path = require("path");
 const fs = require("fs");
 const { PDFDocument } = require("pdf-lib");
 
+// Electron hot reload - moved AFTER app import
+if (!app.isPackaged) {
+  require("electron-reload")(__dirname, {
+    electron: require("path").join(
+      __dirname,
+      "node_modules",
+      ".bin",
+      "electron"
+    ),
+    hardResetMethod: "exit",
+    ignore: /node_modules|[\/\\]\.|dist|build/,
+    forceHardReset: ["main.js", "preload.js"],
+  });
+}
+
 // A4 dimensions in points (1 point = 1/72 inch)
 const A4_WIDTH = 595.28;
 const A4_HEIGHT = 841.89;
 const MARGIN = 40;
+
+function enableLiveReload() {
+  if (!app.isPackaged) {
+    if (process.stdin) {
+      process.stdin.on("data", (data) => {
+        if (data.toString().trim() === "reload") {
+          BrowserWindow.getAllWindows().forEach((window) => {
+            window.webContents.reloadIgnoringCache();
+          });
+          console.log("🔄 Renderer reloaded");
+        }
+      });
+    }
+  }
+}
 
 // ============= LOGGING & AUTO-UPDATE =============
 let autoUpdater = null;
@@ -177,66 +207,66 @@ function checkForUpdates(showNoUpdateDialog = false) {
 }
 
 // ============= MENU =============
-function createMenu() {
-  const template = [
-    {
-      label: "File",
-      submenu: [{ role: "quit" }],
-    },
-    {
-      label: "Edit",
-      submenu: [
-        { role: "undo" },
-        { role: "redo" },
-        { type: "separator" },
-        { role: "cut" },
-        { role: "copy" },
-        { role: "paste" },
-      ],
-    },
-    {
-      label: "View",
-      submenu: [
-        { role: "reload" },
-        { role: "forceReload" },
-        { role: "toggleDevTools" },
-        { type: "separator" },
-        { role: "resetZoom" },
-        { role: "zoomIn" },
-        { role: "zoomOut" },
-        { type: "separator" },
-        { role: "togglefullscreen" },
-      ],
-    },
-    {
-      label: "Help",
-      submenu: [
-        {
-          label: "Check for Updates",
-          click: () => {
-            checkForUpdates(true);
-          },
-        },
-        { type: "separator" },
-        {
-          label: "About",
-          click: () => {
-            dialog.showMessageBox(mainWindow, {
-              type: "info",
-              title: "About PDF Merger",
-              message: "PDF Merger",
-              detail: `Version: ${app.getVersion()}\n\nLocal PDF & Image Merger\nAll processing happens on your computer\n\nDeveloped by Utsav Adhikari\nLicense: MIT`,
-              buttons: ["OK"],
-            });
-          },
-        },
-      ],
-    },
-  ];
+// function createMenu() {
+//   const template = [
+//     {
+//       label: "File",
+//       submenu: [{ role: "quit" }],
+//     },
+//     {
+//       label: "Edit",
+//       submenu: [
+//         { role: "undo" },
+//         { role: "redo" },
+//         { type: "separator" },
+//         { role: "cut" },
+//         { role: "copy" },
+//         { role: "paste" },
+//       ],
+//     },
+//     {
+//       label: "View",
+//       submenu: [
+//         { role: "reload" },
+//         { role: "forceReload" },
+//         { role: "toggleDevTools" },
+//         { type: "separator" },
+//         { role: "resetZoom" },
+//         { role: "zoomIn" },
+//         { role: "zoomOut" },
+//         { type: "separator" },
+//         { role: "togglefullscreen" },
+//       ],
+//     },
+//     {
+//       label: "Help",
+//       submenu: [
+//         {
+//           label: "Check for Updates",
+//           click: () => {
+//             checkForUpdates(true);
+//           },
+//         },
+//         { type: "separator" },
+//         {
+//           label: "About",
+//           click: () => {
+//             dialog.showMessageBox(mainWindow, {
+//               type: "info",
+//               title: "About PDF Merger",
+//               message: "PDF Merger",
+//               detail: `Version: ${app.getVersion()}\n\nLocal PDF & Image Merger\nAll processing happens on your computer\n\nDeveloped by Utsav Adhikari\nLicense: MIT`,
+//               buttons: ["OK"],
+//             });
+//           },
+//         },
+//       ],
+//     },
+//   ];
 
-  const menu = Menu.buildFromTemplate(template);
-  Menu.setApplicationMenu(menu);
-}
+//   const menu = Menu.buildFromTemplate(template);
+//   Menu.setApplicationMenu(menu);
+// }
 
 // ============= WINDOW MANAGEMENT =============
 function createWindow() {
@@ -245,6 +275,7 @@ function createWindow() {
     height: 860,
     minWidth: 800,
     minHeight: 600,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -274,10 +305,13 @@ function createWindow() {
   });
 
   // Create menu
-  createMenu();
+  // createMenu();
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+  enableLiveReload();
+});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
@@ -364,18 +398,37 @@ ipcMain.handle("merge-files", async (event, filesArray) => {
     if (!filesArray || filesArray.length < 1)
       throw new Error("No files provided");
 
-    const mergedPdf = await PDFDocument.create();
+    // ✅ Debug: Log incoming files
+    console.log(
+      `🔧 Main process: Received ${filesArray.length} files to merge`
+    );
+    filesArray.forEach((f, i) => {
+      const bufferSize = f.buffer?.byteLength || f.buffer?.length || 0;
+      console.log(
+        `  File ${i + 1}: ${f.name} (${f.type}) - ${bufferSize} bytes`
+      );
+    });
 
+    const mergedPdf = await PDFDocument.create();
     const BATCH_SIZE = 3;
+
     for (let i = 0; i < filesArray.length; i += BATCH_SIZE) {
       const batch = filesArray.slice(i, i + BATCH_SIZE);
+
+      // Send progress BEFORE processing batch
+      const startProgress = Math.round((i / filesArray.length) * 100);
+      event.sender.send("merge-progress", startProgress);
 
       const processedPages = await Promise.all(
         batch.map(async (f) => {
           const name = f.name || "unknown";
           const type = f.type || "";
           const buffer = normalizeBuffer(f.buffer);
-          if (!buffer || buffer.length === 0) return null;
+
+          if (!buffer || buffer.length === 0) {
+            console.warn(`⚠️ Empty buffer for ${name}`);
+            return null;
+          }
 
           try {
             if (type === "application/pdf" || /\.pdf$/i.test(name)) {
@@ -451,10 +504,14 @@ ipcMain.handle("merge-files", async (event, filesArray) => {
         }
       }
 
-      const progress = Math.round(
+      // Send progress AFTER processing batch
+      const endProgress = Math.round(
         ((i + batch.length) / filesArray.length) * 100
       );
-      event.sender.send("merge-progress", progress);
+      event.sender.send("merge-progress", endProgress);
+
+      // ✅ Smaller yield for smoother UI
+      await new Promise((resolve) => setImmediate(resolve));
     }
 
     const mergedBytes = await mergedPdf.save({
@@ -463,9 +520,203 @@ ipcMain.handle("merge-files", async (event, filesArray) => {
       objectsPerTick: 50,
     });
 
+    // ✅ Debug: Verify output
+    console.log(
+      `✅ Main process: Merged PDF created - ${mergedBytes.length} bytes`
+    );
+    console.log(`  Pages: ${mergedPdf.getPageCount()}`);
+
     return { success: true, bytes: Array.from(mergedBytes) };
   } catch (err) {
     console.error("Merge error:", err);
+    return { success: false, message: err.message || String(err) };
+  }
+});
+
+// ============= PERFORMANCE-TRACKED CHUNKED PDF MERGING =============
+ipcMain.handle("merge-files-chunk", async (event, { files, existingPdf }) => {
+  const chunkStartTime = Date.now();
+  const timings = {};
+
+  try {
+    if (!files || files.length < 1) throw new Error("No files provided");
+
+    console.log(`\n${"=".repeat(60)}`);
+    console.log(`🔧 CHUNK START: ${files.length} files`);
+    console.log(`${"=".repeat(60)}`);
+
+    // TIMING 1: PDF Loading
+    const loadStartTime = Date.now();
+    let mergedPdf;
+    if (existingPdf && existingPdf.length > 0) {
+      mergedPdf = await PDFDocument.load(Buffer.from(existingPdf), {
+        ignoreEncryption: true,
+        updateMetadata: false,
+      });
+      console.log(`📄 Continuing from ${mergedPdf.getPageCount()} pages`);
+    } else {
+      mergedPdf = await PDFDocument.create();
+    }
+    timings.pdfLoad = Date.now() - loadStartTime;
+
+    // TIMING 2: File Processing (Parallel)
+    const processStartTime = Date.now();
+    const results = await Promise.allSettled(
+      files.map(async (f) => {
+        const fileStartTime = Date.now();
+        const name = f.name || "unknown";
+        const type = f.type || "";
+        const buffer = normalizeBuffer(f.buffer);
+
+        if (!buffer || buffer.length === 0) {
+          console.warn(`⚠️  Empty buffer: ${name}`);
+          return null;
+        }
+
+        try {
+          if (type === "application/pdf" || /\.pdf$/i.test(name)) {
+            const pdfDoc = await PDFDocument.load(buffer, {
+              ignoreEncryption: true,
+              updateMetadata: false,
+              throwOnInvalidObject: false,
+            });
+            const fileTime = Date.now() - fileStartTime;
+            console.log(
+              `   ✓ PDF loaded: ${name} (${fileTime}ms, ${pdfDoc.getPageCount()} pages)`
+            );
+            return { type: "pdf", doc: pdfDoc, name, loadTime: fileTime };
+          } else if (
+            type.startsWith("image/") ||
+            /\.(png|jpe?g|jpg)$/i.test(name)
+          ) {
+            const fileTime = Date.now() - fileStartTime;
+            console.log(
+              `   ✓ Image loaded: ${name} (${fileTime}ms, ${Math.round(
+                buffer.length / 1024
+              )}KB)`
+            );
+            return {
+              type: "image",
+              buffer,
+              name,
+              mimeType: type,
+              loadTime: fileTime,
+            };
+          }
+        } catch (err) {
+          const fileTime = Date.now() - fileStartTime;
+          console.warn(`   ✗ Failed: ${name} (${fileTime}ms) - ${err.message}`);
+          return null;
+        }
+        return null;
+      })
+    );
+    timings.fileProcessing = Date.now() - processStartTime;
+
+    // TIMING 3: Result Collection
+    const collectStartTime = Date.now();
+    const validResults = results
+      .filter(
+        (r) =>
+          r.status === "fulfilled" && r.value !== null && r.value !== undefined
+      )
+      .map((r) => r.value);
+    timings.resultCollection = Date.now() - collectStartTime;
+
+    const skippedCount = files.length - validResults.length;
+    console.log(
+      `\n📊 Loaded: ${validResults.length}/${files.length} files ${
+        skippedCount > 0 ? `(skipped ${skippedCount})` : ""
+      }`
+    );
+
+    // TIMING 4: PDF Assembly
+    const assemblyStartTime = Date.now();
+    let pdfCount = 0;
+    let imageCount = 0;
+
+    for (const result of validResults) {
+      if (result.type === "pdf") {
+        const pageIndices = result.doc.getPageIndices();
+        const copied = await mergedPdf.copyPages(result.doc, pageIndices);
+        copied.forEach((p) => mergedPdf.addPage(p));
+        pdfCount++;
+      } else if (result.type === "image") {
+        let embedded;
+        if (
+          result.mimeType === "image/jpeg" ||
+          /\.jpe?g|jpg$/i.test(result.name)
+        ) {
+          embedded = await mergedPdf.embedJpg(result.buffer);
+        } else {
+          try {
+            embedded = await mergedPdf.embedPng(result.buffer);
+          } catch {
+            embedded = await mergedPdf.embedJpg(result.buffer);
+          }
+        }
+
+        const imgWidth = embedded.width;
+        const imgHeight = embedded.height;
+        const maxWidth = A4_WIDTH - 2 * MARGIN;
+        const maxHeight = A4_HEIGHT - 2 * MARGIN;
+        const scale = Math.min(maxWidth / imgWidth, maxHeight / imgHeight);
+        const scaledWidth = imgWidth * scale;
+        const scaledHeight = imgHeight * scale;
+
+        const page = mergedPdf.addPage([A4_WIDTH, A4_HEIGHT]);
+        page.drawImage(embedded, {
+          x: (A4_WIDTH - scaledWidth) / 2,
+          y: (A4_HEIGHT - scaledHeight) / 2,
+          width: scaledWidth,
+          height: scaledHeight,
+        });
+        imageCount++;
+      }
+    }
+    timings.pdfAssembly = Date.now() - assemblyStartTime;
+
+    // TIMING 5: PDF Save
+    const saveStartTime = Date.now();
+    const mergedBytes = await mergedPdf.save({
+      useObjectStreams: false,
+      addDefaultPage: false,
+      objectsPerTick: 100,
+    });
+    timings.pdfSave = Date.now() - saveStartTime;
+
+    // TIMING 6: Array Conversion
+    const convertStartTime = Date.now();
+    const bytesArray = Array.from(mergedBytes);
+    timings.arrayConversion = Date.now() - convertStartTime;
+
+    const totalTime = Date.now() - chunkStartTime;
+
+    // Performance Summary
+    console.log(`\n⏱️  PERFORMANCE BREAKDOWN:`);
+    console.log(`   PDF Load:          ${timings.pdfLoad}ms`);
+    console.log(`   File Processing:   ${timings.fileProcessing}ms (parallel)`);
+    console.log(`   Result Collection: ${timings.resultCollection}ms`);
+    console.log(
+      `   PDF Assembly:      ${timings.pdfAssembly}ms (${pdfCount} PDFs, ${imageCount} images)`
+    );
+    console.log(`   PDF Save:          ${timings.pdfSave}ms`);
+    console.log(`   Array Conversion:  ${timings.arrayConversion}ms`);
+    console.log(`   ─────────────────────────────────────`);
+    console.log(`   TOTAL TIME:        ${totalTime}ms`);
+    console.log(
+      `\n✅ Output: ${Math.round(
+        mergedBytes.length / 1024 / 1024
+      )}MB, ${mergedPdf.getPageCount()} pages`
+    );
+    console.log(`${"=".repeat(60)}\n`);
+
+    return { success: true, bytes: bytesArray };
+  } catch (err) {
+    const totalTime = Date.now() - chunkStartTime;
+    console.error(`\n❌ CHUNK FAILED after ${totalTime}ms:`, err.message);
+    console.error(`   Timings so far:`, timings);
+    console.error(`${"=".repeat(60)}\n`);
     return { success: false, message: err.message || String(err) };
   }
 });
@@ -479,10 +730,171 @@ ipcMain.handle("save-bytes", async (event, { fileName, bytes }) => {
     });
     if (canceled || !filePath) return { success: false, message: "canceled" };
 
-    await fs.promises.writeFile(filePath, Buffer.from(bytes));
+    // ✅ Handle both Array and Uint8Array efficiently
+    const buffer =
+      bytes instanceof Uint8Array
+        ? Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength)
+        : Buffer.from(bytes);
+
+    await fs.promises.writeFile(filePath, buffer);
     return { success: true, path: filePath };
   } catch (err) {
     console.error("save-bytes error", err);
     return { success: false, message: err.message || String(err) };
   }
 });
+
+ipcMain.handle("save-bytes-base64", async (event, { fileName, base64 }) => {
+  try {
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      title: "Save PDF",
+      defaultPath: fileName || "merged.pdf",
+      filters: [{ name: "PDF", extensions: ["pdf"] }],
+    });
+    if (canceled || !filePath) return { success: false, message: "canceled" };
+
+    // Convert base64 directly to buffer
+    const buffer = Buffer.from(base64, "base64");
+
+    await fs.promises.writeFile(filePath, buffer);
+    return { success: true, path: filePath };
+  } catch (err) {
+    console.error("save-bytes-base64 error", err);
+    return { success: false, message: err.message || String(err) };
+  }
+});
+// Add this after the save-bytes handler (around line 450)
+ipcMain.handle("save-split-folder", async (event, files) => {
+  try {
+    // Create timestamp-based folder name: YYYYMMDD_HHMM_split
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const hour = String(now.getHours()).padStart(2, "0");
+    const minute = String(now.getMinutes()).padStart(2, "0");
+    const folderName = `${year}${month}${day}_${hour}${minute}_split`;
+
+    // Get user's Downloads folder
+    const downloadsPath = app.getPath("downloads");
+
+    // Create full folder path
+    let folderPath = path.join(downloadsPath, folderName);
+
+    // Check if folder exists, if so add counter
+    let counter = 1;
+    while (fs.existsSync(folderPath)) {
+      folderPath = path.join(downloadsPath, `${folderName}_${counter}`);
+      counter++;
+    }
+
+    // Create the folder
+    await fs.promises.mkdir(folderPath, { recursive: true });
+
+    // Save all files into the folder
+    for (const file of files) {
+      const filePath = path.join(folderPath, file.name);
+      const buffer = Buffer.from(file.bytes);
+      await fs.promises.writeFile(filePath, buffer);
+    }
+
+    return { success: true, path: folderPath };
+  } catch (err) {
+    console.error("save-split-folder error:", err);
+    return { success: false, message: err.message || String(err) };
+  }
+});
+// Add this new handler after save-split-folder
+ipcMain.handle(
+  "save-split-folder-batch",
+  async (event, { files, folderPath }) => {
+    try {
+      let targetFolder = folderPath;
+
+      // Create folder on first batch
+      if (!targetFolder) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        const hour = String(now.getHours()).padStart(2, "0");
+        const minute = String(now.getMinutes()).padStart(2, "0");
+        const folderName = `${year}${month}${day}_${hour}${minute}_split`;
+
+        const downloadsPath = app.getPath("downloads");
+        targetFolder = path.join(downloadsPath, folderName);
+
+        let counter = 1;
+        while (fs.existsSync(targetFolder)) {
+          targetFolder = path.join(downloadsPath, `${folderName}_${counter}`);
+          counter++;
+        }
+
+        await fs.promises.mkdir(targetFolder, { recursive: true });
+      }
+
+      // Save files in this batch
+      for (const file of files) {
+        const filePath = path.join(targetFolder, file.name);
+        const buffer = Buffer.from(file.bytes);
+        await fs.promises.writeFile(filePath, buffer);
+      }
+
+      return { success: true, path: targetFolder };
+    } catch (err) {
+      console.error("save-split-folder-batch error:", err);
+      return { success: false, message: err.message || String(err) };
+    }
+  }
+);
+
+// ============= LARGE FILE SPLIT HANDLER (STREAMING) =============
+ipcMain.handle(
+  "save-split-file-direct",
+  async (event, { fileName, base64Chunk, isFirst, isLast, folderPath }) => {
+    try {
+      let targetFolder = folderPath;
+
+      // Create folder on first chunk
+      if (isFirst && !folderPath) {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, "0");
+        const day = String(now.getDate()).padStart(2, "0");
+        const hour = String(now.getHours()).padStart(2, "0");
+        const minute = String(now.getMinutes()).padStart(2, "0");
+        const folderName = `${year}${month}${day}_${hour}${minute}_split`;
+
+        const downloadsPath = app.getPath("downloads");
+        targetFolder = path.join(downloadsPath, folderName);
+
+        let counter = 1;
+        while (fs.existsSync(targetFolder)) {
+          targetFolder = path.join(downloadsPath, `${folderName}_${counter}`);
+          counter++;
+        }
+
+        await fs.promises.mkdir(targetFolder, { recursive: true });
+      }
+
+      const filePath = path.join(targetFolder, fileName);
+      const buffer = Buffer.from(base64Chunk, "base64");
+
+      // Append or create file
+      if (isFirst) {
+        await fs.promises.writeFile(filePath, buffer);
+      } else {
+        await fs.promises.appendFile(filePath, buffer);
+      }
+
+      return {
+        success: true,
+        path: targetFolder,
+        fileComplete: isLast,
+      };
+    } catch (err) {
+      console.error("save-split-file-direct error:", err);
+      return { success: false, message: err.message || String(err) };
+    }
+  }
+);

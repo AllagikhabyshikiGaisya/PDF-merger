@@ -20,8 +20,23 @@ contextBridge.exposeInMainWorld("libs", {
 contextBridge.exposeInMainWorld("electronAPI", {
   // Existing functions
   mergeFiles: (files) => ipcRenderer.invoke("merge-files", files),
+  mergeFilesChunk: (data) => ipcRenderer.invoke("merge-files-chunk", data),
   saveBytes: (fileName, bytes) =>
     ipcRenderer.invoke("save-bytes", { fileName, bytes }),
+  saveBytesBase64: (fileName, base64) =>
+    ipcRenderer.invoke("save-bytes-base64", { fileName, base64 }),
+  saveSplitFolder: (files) => ipcRenderer.invoke("save-split-folder", files),
+  saveSplitFolderBatch: (files, folderPath) =>
+    ipcRenderer.invoke("save-split-folder-batch", { files, folderPath }),
+  saveSplitFileDirect: (fileName, base64Chunk, isFirst, isLast, folderPath) =>
+    ipcRenderer.invoke("save-split-file-direct", {
+      fileName,
+      base64Chunk,
+      isFirst,
+      isLast,
+      folderPath,
+    }),
+
   onMergeProgress: (callback) => {
     ipcRenderer.on("merge-progress", (event, progress) => callback(progress));
   },

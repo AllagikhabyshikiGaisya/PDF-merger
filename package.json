@@ -26,7 +26,8 @@
   ],
   "scripts": {
     "start": "electron .",
-    "dev": "electron . --enable-logging",
+    "dev": "node dev-server.js",
+    "dev-simple": "electron . --enable-logging",
     "package-win": "npx electron-packager . PDFMerger --platform=win32 --arch=ia32,x64 --out=dist --overwrite",
     "build": "electron-builder --win --x64",
     "build:dir": "electron-builder --win --x64 --dir",
@@ -116,14 +117,20 @@
   },
   "dependencies": {
     "electron-log": "^5.4.3",
+    "electron-updater": "^6.6.2",
     "pdf-lib": "^1.17.1",
-    "pdfjs-dist": "^5.4.394",
-    "electron-updater": "^6.6.2"
+    "pdfjs-dist": "^5.4.394"
   },
   "devDependencies": {
     "archiver": "^7.0.1",
-    "electron": "^39.2.1",
+    "browser-sync": "^3.0.4",
+    "chokidar": "^5.0.0",
+    "concurrently": "^9.2.1",
+    "electron": "^39.2.6",
     "electron-builder": "^26.0.12",
-    "electron-packager": "^17.1.0"
+    "electron-packager": "^17.1.0",
+    "electron-reload": "^2.0.0-alpha.1",
+    "nodemon": "^3.1.11",
+    "reload": "^3.4.2"
   }
 }

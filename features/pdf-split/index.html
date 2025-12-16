@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="pdf-split-container">
+      <!-- Step 1: File Upload -->
+      <div id="uploadStep" class="split-step active">
+        <div class="split-header">
+          <button class="back-btn" id="backToMain">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            <span data-lang-ja="戻る" data-lang-en="Back">戻る</span>
+          </button>
+          <h1 class="split-title">
+            <span data-lang-ja="PDF分割ツール" data-lang-en="PDF Split Tool"
+              >PDF分割ツール</span
+            >
+          </h1>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+          <div class="upload-icon">📄</div>
+          <h2 data-lang-ja="PDFファイルを選択" data-lang-en="Select PDF File">
+            PDFファイルを選択
+          </h2>
+          <p
+            data-lang-ja="ドラッグ&ドロップまたはクリックして選択"
+            data-lang-en="Drag & Drop or Click to Select"
+          >
+            ドラッグ&ドロップまたはクリックして選択
+          </p>
+          <input
+            type="file"
+            id="pdfFileInput"
+            accept=".pdf"
+            style="display: none"
+          />
+
+          <button
+            class="btn secondary"
+            id="browseBtn"
+            data-lang-ja="ファイルを選択"
+            data-lang-en="Browse Files"
+          >
+            ファイルを選択
+          </button>
+          <div id="fileInfo" class="file-info" style="display: none">
+            <div class="file-name" id="fileName"></div>
+            <div class="file-size" id="fileSize"></div>
+            <button
+              class="btn small"
+              id="removeFile"
+              style="background: var(--accent-red); color: white"
+            >
+              <span data-lang-ja="削除" data-lang-en="Remove">削除</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="upload-actions">
+          <button class="btn big primary" id="loadPdfBtn" style="display: none">
+            <span data-lang-ja="PDFを読み込む" data-lang-en="Load PDF"
+              >PDFを読み込む</span
+            >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2: Split Configuration & Preview -->
+      <div id="splitStep" class="split-step">
+        <div class="split-header">
+          <button class="back-btn" id="backToUpload">
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+            <span data-lang-ja="戻る" data-lang-en="Back">戻る</span>
+          </button>
+          <h1 class="split-title">
+            <span data-lang-ja="分割設定" data-lang-en="Split Configuration"
+              >分割設定</span
+            >
+          </h1>
+        </div>
+
+        <div class="split-content">
+          <!-- PDF Preview Area -->
+          <div class="pdf-preview-area" id="pdfPreviewArea">
+            <div id="pdfPagesContainer" class="pdf-pages-container">
+              <!-- PDF pages will be rendered here -->
+            </div>
+          </div>
+
+          <!-- Control Panel -->
+          <div class="split-control-panel">
+            <div class="control-header">
+              <h3 data-lang-ja="分割設定" data-lang-en="Split Settings">
+                分割設定
+              </h3>
+              <div class="pdf-info">
+                <div class="info-item">
+                  <span
+                    class="info-label"
+                    data-lang-ja="総ページ数"
+                    data-lang-en="Total Pages"
+                    >総ページ数:</span
+                  >
+                  <span class="info-value" id="totalPagesInfo">0</span>
+                </div>
+                <div class="info-item">
+                  <span
+                    class="info-label"
+                    data-lang-ja="ファイルサイズ"
+                    data-lang-en="File Size"
+                    >ファイルサイズ:</span
+                  >
+                  <span class="info-value" id="fileSizeInfo">0 MB</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mode Selection -->
+            <div class="mode-selection">
+              <button
+                class="mode-btn active"
+                data-mode="custom"
+                id="customModeBtn"
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M12 2v20M2 12h20" />
+                </svg>
+                <span data-lang-ja="カスタム範囲" data-lang-en="Custom Range"
+                  >カスタム範囲</span
+                >
+              </button>
+              <button class="mode-btn" data-mode="fixed" id="fixedModeBtn">
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <rect x="3" y="3" width="7" height="7" rx="1" />
+                  <rect x="14" y="3" width="7" height="7" rx="1" />
+                  <rect x="3" y="14" width="7" height="7" rx="1" />
+                  <rect x="14" y="14" width="7" height="7" rx="1" />
+                </svg>
+                <span data-lang-ja="固定範囲" data-lang-en="Fixed Range"
+                  >固定範囲</span
+                >
+              </button>
+            </div>
+
+            <!-- Custom Range Settings -->
+            <div id="customRangeSettings" class="range-settings active">
+              <div id="rangesList" class="ranges-list">
+                <!-- Ranges will be dynamically added here -->
+              </div>
+              <button
+                class="btn secondary"
+                id="addRangeBtn"
+                style="width: 100%; margin-top: 12px"
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                <span data-lang-ja="範囲を追加" data-lang-en="Add Range"
+                  >範囲を追加</span
+                >
+              </button>
+              <div class="help-text">
+                <span
+                  data-lang-ja="複数の範囲を追加できます。重複しない範囲を指定してください。"
+                  data-lang-en="You can add multiple ranges. Ensure ranges don't overlap."
+                >
+                  複数の範囲を追加できます。重複しない範囲を指定してください。
+                </span>
+              </div>
+              <div
+                id="customRangePreview"
+                class="split-preview"
+                style="display: none"
+              >
+                <!-- Preview will be shown here -->
+              </div>
+            </div>
+
+            <!-- Fixed Range Settings -->
+            <div id="fixedRangeSettings" class="range-settings">
+              <div class="setting-group">
+                <label
+                  data-lang-ja="ページ数ごとに分割"
+                  data-lang-en="Pages per Split"
+                  >ページ数ごとに分割</label
+                >
+                <input
+                  type="number"
+                  id="pagesPerSplit"
+                  class="page-input"
+                  min="1"
+                  value="4"
+                  placeholder="4"
+                />
+              </div>
+              <div class="help-text">
+                <span
+                  data-lang-ja="指定したページ数ごとにファイルを分割します"
+                  data-lang-en="Split into files with specified page count"
+                >
+                  指定したページ数ごとにファイルを分割します
+                </span>
+              </div>
+              <div id="splitPreview" class="split-preview">
+                <!-- Split preview will be shown here -->
+              </div>
+            </div>
+
+            <!-- Split Action Button -->
+            <button class="btn big primary" id="executeSplitBtn">
+              <span data-lang-ja="PDF分割実行" data-lang-en="Execute Split"
+                >PDF分割実行</span
+              >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Download Results -->
+      <div id="downloadStep" class="split-step">
+        <div class="split-header">
+          <h1 class="split-title">
+            <span class="split-icon">✅</span>
+            <span data-lang-ja="分割完了" data-lang-en="Split Complete"
+              >分割完了</span
+            >
+          </h1>
+        </div>
+
+        <div class="download-area">
+          <div class="success-icon">🎉</div>
+          <h2
+            data-lang-ja="PDFの分割が完了しました"
+            data-lang-en="PDF Split Complete"
+          >
+            PDFの分割が完了しました
+          </h2>
+          <div class="split-summary" id="splitSummary">
+            <!-- Summary will be inserted here -->
+          </div>
+          <div class="download-actions">
+            <button class="btn big success" id="downloadSplitBtn">
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"
+                />
+              </svg>
+              <span
+                data-lang-ja="分割ファイルをダウンロード"
+                data-lang-en="Download Split Files"
+                >分割ファイルをダウンロード</span
+              >
+            </button>
+            <button class="btn" id="splitAnotherBtn">
+              <span
+                data-lang-ja="別のPDFを分割"
+                data-lang-en="Split Another PDF"
+                >別のPDFを分割</span
+              >
+            </button>
+            <button class="btn" id="backToMainFromDownload">
+              <span
+                data-lang-ja="メインページに戻る"
+                data-lang-en="Back to Main"
+                >メインページに戻る</span
+              >
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="feature.js"></script>
+  </body>
+</html>
