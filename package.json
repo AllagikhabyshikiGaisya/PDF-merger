@@ -11,7 +11,7 @@
   "homepage": "https://github.com/AllagikhabyshikiGaisya/PDF-merger#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/AllagikhabyshikiGaisya/PDF-merger.git"
+    "url": "git+https://github.com/AllagikhabyshikiGaisya/PDF-merger.git"
   },
   "bugs": {
     "url": "https://github.com/AllagikhabyshikiGaisya/PDF-merger/issues"
@@ -83,7 +83,8 @@
           "provider": "github",
           "owner": "AllagikhabyshikiGaisya",
           "repo": "PDF-merger",
-          "releaseType": "release"
+          "releaseType": "release",
+          "publishAutoUpdate": true
         }
       ]
     },
