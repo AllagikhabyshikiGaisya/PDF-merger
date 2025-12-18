@@ -1,6 +1,6 @@
 {
   "name": "pdf-merger-electron",
-  "version": "2.1.5",
+  "version": "2.1.6",
   "description": "Local PDF + Image merger (Electron) - modern UI, optimized binary transfer",
   "main": "main.js",
   "author": {
@@ -104,7 +104,15 @@
       "include": "build/installer.nsh",
       "perMachine": false,
       "artifactName": "${productName}-Setup-${version}.${ext}",
-      "license": "LICENSE.txt"
+      "license": "LICENSE.txt",
+      "installerLanguages": [
+        "en",
+        "ja"
+      ],
+      "warningsAsErrors": false,
+      "unicode": true,
+      "guid": "com.utsavadhikari.pdfmerger",
+      "differentialPacakage": true
     },
     "portable": {
       "artifactName": "${productName}-Portable-${version}.${ext}"

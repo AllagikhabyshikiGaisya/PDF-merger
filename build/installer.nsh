@@ -1,19 +1,31 @@
-; Custom NSIS installer script for PDF Merger
-; This adds custom messages and actions during installation
+; Custom NSIS installer script for silent auto-updates
+; This ensures smooth, non-interactive updates
+
+!macro customInit
+  ; Check if running from auto-updater (silent mode)
+  ${IfNot} ${Silent}
+    ; Normal installation - show UI
+  ${Else}
+    ; Silent auto-update installation
+    SetSilent silent
+    
+    ; Skip user prompts
+    SetAutoClose true
+    
+    ; Log silent installation
+    DetailPrint "Auto-update: Silent installation mode"
+  ${EndIf}
+!macroend
 
 !macro customInstall
-  ; This runs during installation
-  DetailPrint "Installing PDF Merger..."
-  DetailPrint "All your files stay on your computer - no data is uploaded"
+  ; Additional custom installation steps if needed
+  DetailPrint "Installing PDF-Merger update..."
 !macroend
 
-!macro customUnInstall
-  ; This runs during uninstallation
-  DetailPrint "Uninstalling PDF Merger..."
-  DetailPrint "Removing application files..."
-!macroend
-
-; Custom welcome message
-!macro customHeader
-  !system 'echo "PDF Merger - Professional Edition"'
+!macro customUnInit
+  ; Silent uninstall during updates
+  ${If} ${Silent}
+    SetAutoClose true
+    DetailPrint "Auto-update: Silent uninstallation mode"
+  ${EndIf}
 !macroend

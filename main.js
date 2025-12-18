@@ -66,10 +66,15 @@ if (autoUpdater) {
   autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.allowPrerelease = false;
 
+  // ✅ CRITICAL: Force silent installation for seamless updates
+  autoUpdater.forceRunAfter = true; // Force restart after download
+
   // Enhanced logging
   log.info("=".repeat(60));
   log.info("🔧 AUTO-UPDATER INITIALIZATION");
   log.info("=".repeat(60));
+  log.info("Silent Installation: ENABLED");
+  log.info("Force Restart After Update: ENABLED");
   log.info(`Current Version: ${app.getVersion()}`);
   log.info(`App Name: ${app.getName()}`);
   log.info(`Is Packaged: ${app.isPackaged}`);
@@ -164,6 +169,17 @@ if (autoUpdater) {
     log.error("=".repeat(60));
     log.error(`Error Type: ${err.name}`);
     log.error(`Error Message: ${err.message}`);
+
+    // Check if error is related to installation
+    if (
+      err.message.includes("elevation") ||
+      err.message.includes("permissions")
+    ) {
+      log.error("⚠️ DIAGNOSIS: Installation requires elevated permissions");
+      log.error("   - User might have denied UAC prompt");
+      log.error("   - Try running as administrator");
+      log.error("   - Or use perMachine: false in package.json");
+    }
     log.error(`Error Stack:`, err.stack);
     log.error(`Current Version: ${app.getVersion()}`);
     log.error(`Feed URL: ${autoUpdater.getFeedURL()}`);
@@ -213,21 +229,37 @@ if (autoUpdater) {
     log.info(`📥 Download progress: ${message.percent}%`);
     sendStatusToWindow("update-progress", message);
   });
-
-  // 5. Update downloaded - Force restart
+  // 5. Update downloaded - Force restart with silent installation
   autoUpdater.on("update-downloaded", (info) => {
     log.info("✅ Update downloaded:", info.version);
+    log.info("🔄 Preparing SILENT installation...");
+
     sendStatusToWindow("update-downloaded", {
       version: info.version,
       message: "アップデートをインストール中...",
       messageEn: "Installing update...",
     });
 
-    // ✅ Force quit and install after 2 seconds (no user interaction)
+    // ✅ Force quit and install immediately with silent flags
     setTimeout(() => {
-      log.info("🔄 Forcing app restart to install update...");
+      log.info("=".repeat(60));
+      log.info("🚀 INITIATING SILENT UPDATE INSTALLATION");
+      log.info("=".repeat(60));
+      log.info(`New Version: ${info.version}`);
+      log.info("Installation Mode: SILENT (no user interaction)");
+      log.info("Action: Uninstall old → Install new → Auto-restart");
+      log.info("=".repeat(60));
+
+      // Remove listeners to prevent app from staying open
       app.removeAllListeners("window-all-closed");
-      autoUpdater.quitAndInstall(false, true);
+
+      // Force quit and install silently
+      // Parameters: (isSilent=true, isForceRunAfter=true)
+      autoUpdater.quitAndInstall(true, true);
+
+      log.info(
+        "✅ Silent installation initiated - app will restart automatically"
+      );
     }, 2000);
   });
 }
