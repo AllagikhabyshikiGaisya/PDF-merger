@@ -1,6 +1,6 @@
 {
   "name": "pdf-merger-electron",
-  "version": "2.1.6",
+  "version": "2.1.7",
   "description": "Local PDF + Image merger (Electron) - modern UI, optimized binary transfer",
   "main": "main.js",
   "author": {
