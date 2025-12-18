@@ -847,10 +847,6 @@ async function normalizeFilesToPdfUploadsWithValidation(
     await new Promise((resolve) => setTimeout(resolve, 0));
   }
 
-  console.log(
-    `📊 Normalization complete: ${out.length} success, ${skipped.length} skipped`
-  );
-
   // ✅ Debug output to verify data
   if (out.length > 0) {
     console.log("Sample normalized file:", {
