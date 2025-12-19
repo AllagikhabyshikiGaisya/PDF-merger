@@ -42,12 +42,10 @@
 
 /* Upload Stage */
 .upload-header {
-  padding: 20px 40px;
-  background: var(--white);
-  border-bottom: 1px solid #e5e5e5;
+  padding: 8px 40px;
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 26rem;
 }
 
 .back-btn {

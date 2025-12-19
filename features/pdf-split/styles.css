@@ -43,13 +43,12 @@
 
 /* Header */
 .split-header {
-  background: white;
-  padding: 10px 40px;
-  box-shadow: var(--shadow-sm);
+  padding: 8px 40px;
+  /* box-shadow: var(--shadow-sm); */
   display: flex;
   align-items: center;
-  gap: 24px;
-  border-bottom: 1px solid var(--border-gray);
+  gap: 26rem;
+
   position: sticky;
   top: 0;
 }
@@ -70,9 +69,9 @@
 }
 
 .back-btn:hover {
-  background: var(--charcoal);
-  color: var(--cream);
-  border-color: var(--charcoal);
+  background: rgb(240, 239, 239);
+  color: black;
+  border-color: var(--accent-red);
   transform: translateX(-2px);
 }
 
@@ -81,9 +80,7 @@
 }
 
 .split-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
+  text-align: center;
   gap: 12px;
   margin: 0;
   font-size: 24px;
@@ -97,14 +94,13 @@
 
 /* Upload Area */
 .upload-area {
-  max-width: 640px;
-  margin: 35px auto;
-  padding: 50px 48px;
+  margin: 40px;
+  padding: 80px 48px 90px 48px;
   background: white;
   border-radius: 12px;
   box-shadow: var(--shadow-md);
   text-align: center;
-  border: 2px dashed var(--border-gray);
+  border: 2px dashed #c41e3a;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
 }
@@ -583,17 +579,18 @@
 .btn.small {
   padding: 8px 16px;
   font-size: 13px;
+  width: 4rem;
 }
 
 /* Secondary Button (for "Browse Files", etc.) */
 .btn.secondary {
-  background: var(--light-gray);
-  color: var(--text-primary);
+  background: #c41e3a;
+  color: white;
   border: 1px solid var(--border-gray);
 }
 
 .btn.secondary:hover:not(:disabled) {
-  background: var(--charcoal);
+  background: var(--accent-red);
   color: var(--cream);
   border-color: var(--charcoal);
 }

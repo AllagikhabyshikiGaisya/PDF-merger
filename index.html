@@ -39,28 +39,6 @@
       </header>
 
       <main class="main-container">
-        <section
-          id="drop-area"
-          class="drop-area"
-          role="region"
-          aria-label="File upload area"
-        >
-          <div class="drop-inner">
-            <div class="drop-icon" aria-hidden="true">
-              <img
-                class="arrow-down-icon"
-                src="./icons/arrow-down-icon.svg"
-                alt="arrow-down-icon"
-              />
-            </div>
-            <div class="drop-text" id="dropText">
-              ここにドラッグ&ドロップ または「ファイル追加」
-            </div>
-          </div>
-
-          <div id="filesList" class="files-grid" role="list"></div>
-        </section>
-
         <!-- Loading Overlay -->
         <div class="loading-overlay" id="loadingOverlay" style="display: none">
           <div class="loading-spinner">
@@ -71,129 +49,71 @@
             </div>
           </div>
         </div>
-        <!-- ✅ Merge Progress Overlay -->
-        <div
-          class="merge-progress-overlay"
-          id="mergeProgressOverlay"
-          style="display: none"
-        >
-          <div class="merge-progress-container">
-            <div class="merge-progress-icon">
-              <svg
-                width="60"
-                height="60"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="7 10 12 15 17 10"></polyline>
-                <line x1="12" y1="15" x2="12" y2="3"></line>
-              </svg>
-            </div>
-            <div class="merge-progress-text" id="mergeProgressText">
-              Merging files...
-            </div>
-            <div class="merge-progress-bar">
-              <div class="merge-progress-fill" id="mergeProgressFill"></div>
-            </div>
-            <div class="merge-progress-percent" id="mergeProgressPercent">
-              0%
-            </div>
-            <div class="merge-progress-detail" id="mergeProgressDetail">
-              Processing files...
+
+        <!-- Add this inside .controls section (after line ~70) -->
+
+        <div class="feature merge-wrapper" id="mergePdfBtn">
+          <img class="feature-icon" src="./icons/merge-icon.png" alt="merge" />
+          <div class="feature-detail">
+            <div class="feature-name" id="mergePdfBtnText">PDF結合</div>
+            <div class="feature-about">
+              PDF、JPEG、PNGを希望の順序で結合します。
             </div>
           </div>
         </div>
-        <aside class="merge-panel">
-          <div class="controls">
-            <input
-              id="fileElem"
-              type="file"
-              accept=".pdf,.png,.jpg,.jpeg"
-              multiple
-              aria-label="Select PDF or image files"
-            />
-            <div class="upload-button-container" id="upload-button">
-              <img src="./icons/upload-icon.svg" alt="+" />
-              <label
-                class="merge-panel-btn label-text"
-                for="fileElem"
-                id="addBtn"
-                >ファイル追加</label
-              >
-            </div>
-            <div class="clear-wrapper">
-              <img
-                class="clear-icon"
-                src="./icons/clear-icon.svg"
-                alt="clear"
-              />
-              <button class="merge-panel-btn btn clear-btn" id="clearBtn">
-                全削除
-              </button>
-            </div>
-            <!-- NEW: PDF Split Button -->
-            <div class="split-wrapper">
-              <img
-                class="split-icon"
-                src="./icons/split-icon.svg"
-                alt="split"
-              />
-              <button class="merge-panel-btn btn split-btn" id="pdfSplitBtn">
-                <span id="splitBtnText">PDF分割</span>
-              </button>
-            </div>
-            <!-- PDF Organizer Button -->
-            <div class="organizer-wrapper">
-              <img
-                class="organizer-icon"
-                src="./icons/organizer-icon.svg"
-                alt="organize"
-              />
-              <button
-                class="merge-panel-btn btn organizer-btn"
-                id="pdfOrganizerBtn"
-              >
-                <span id="organizerBtnText">ページ整理</span>
-              </button>
-            </div>
-            <!-- PDF to JPEG Button -->
-            <div class="pdf-jpeg-wrapper">
-              <img
-                class="pdf-jpeg-icon"
-                src="./icons/jpeg-icon.svg"
-                alt="jpeg"
-              />
-              <button
-                class="merge-panel-btn btn pdf-jpeg-btn"
-                id="pdfToJpegBtn"
-              >
-                <span id="pdfToJpegBtnText">PDF JPEG 変換</span>
-              </button>
+
+        <!-- NEW: PDF Split Button -->
+        <div class="feature split-wrapper" id="pdfSplitBtn">
+          <img class="feature-icon" src="./icons/split-icon.png" alt="split" />
+
+          <div class="feature-detail">
+            <div class="feature-name" id="splitBtnText">PDF分割</div>
+            <div class="feature-about">
+              PDF の 1
+              ページまたはすべてのページを個別のファイルに簡単に変換できます。
             </div>
           </div>
-          <div class="summary">
-            <div id="count">0 個のファイル</div>
-            <div id="totalsize">0 KB</div>
+        </div>
+        <!-- PDF Organizer Button -->
+        <div class="feature organize-wrapper" id="pdfOrganizerBtn">
+          <img
+            class="feature-icon"
+            src="./icons/organizer-icon.png"
+            alt="organize"
+          />
+
+          <div class="feature-detail">
+            <div class="feature-name" id="organizerBtnText">ページ整理</div>
+            <div class="feature-about">
+              好きなように PDF を整理し、PDF ページを削除したり、ドキュメントに
+              PDF ページを追加したりできます。
+            </div>
           </div>
-          <div class="merge-wrapper">
-            <img class="merge-icon" src="./icons/merge-icon.svg" alt="merge" />
-            <button class="merge-panel-btn big" id="mergeBtn">
-              <span id="merge-wrapper-text">結合する</span>
-            </button>
+        </div>
+        <!-- PDF to JPEG Button -->
+        <div class="feature jpeg-wrapper" id="pdfToJpegBtn">
+          <img
+            class="feature-icon jpg-icon"
+            src="./icons/jpeg-icon.png"
+            alt="jpeg"
+          />
+
+          <div class="feature-detail">
+            <div class="feature-name" id="pdfToJpegBtnText">PDF JPEG 変換</div>
+            <div class="feature-about">各 PDF ページを JPG に変換します。</div>
           </div>
-          <div class="editor-wrapper">
-            <img class="edit-icon" src="./icons/edit-icon.svg" alt="editor" />
-            <button class="merge-panel-btn big green" id="mergeEditBtn">
-              結合して編集
-            </button>
+        </div>
+
+        <div class="feature editor-wrapper" id="mergeEditBtn">
+          <img class="feature-icon" src="./icons/edit-icon.png" alt="editor" />
+          <div class="feature-detail">
+            <div class="feature-name">結合して編集</div>
+            <div class="feature-about">
+              テキストやハイライトをさまざまな色で追加して、PDF
+              を強調表示します。
+            </div>
           </div>
-          <div id="status" class="status" role="status" aria-live="polite">
-            すべてPC内で処理(アップロードなし)
-          </div>
-        </aside>
+        </div>
       </main>
 
       <footer class="footer">
@@ -205,239 +125,6 @@
           >
         </div>
       </footer>
-    </div>
-
-    <!-- Editor Page (Existing) -->
-    <div id="editorPage" class="editor-page" style="display: none">
-      <div class="editor-content">
-        <aside class="thumbnail-sidebar">
-          <div id="thumbnailContainer" class="thumbnail-container"></div>
-        </aside>
-
-        <main class="canvas-area">
-          <div class="canvas-container">
-            <canvas id="mainCanvas"></canvas>
-            <canvas id="annotCanvas"></canvas>
-          </div>
-        </main>
-
-        <aside class="editor-toolbar-sidebar">
-          <div class="toolbar-section">
-            <div class="toolbar-section-title">Navigation</div>
-            <div class="editor-actions">
-              <button class="btn" id="backToMerger">結合ページに戻る</button>
-              <button class="btn green" id="savePdf">PDFを保存</button>
-            </div>
-          </div>
-
-          <div class="toolbar-section">
-            <div class="toolbar-section-title">Zoom</div>
-            <div class="zoom-controls">
-              <div class="zoom-display" id="zoomDisplay">100%</div>
-              <div class="zoom-btn-row">
-                <button class="btn zoom-btn" id="zoomOutBtn" title="Zoom Out">
-                  −
-                </button>
-                <button
-                  class="btn zoom-btn"
-                  id="resetZoomBtn"
-                  title="Reset Zoom"
-                >
-                  ⟲
-                </button>
-                <button class="btn zoom-btn" id="zoomInBtn" title="Zoom In">
-                  +
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="toolbar-section">
-            <div class="toolbar-section-title">Tools</div>
-            <div class="annotation-tools">
-              <div class="tool-row">
-                <button
-                  class="tool-btn active"
-                  data-tool="pointer"
-                  title="Pointer"
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z" />
-                  </svg>
-                </button>
-                <button
-                  class="tool-btn"
-                  data-tool="rectangle"
-                  title="Rectangle"
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <rect x="3" y="3" width="18" height="18" rx="2" />
-                  </svg>
-                </button>
-                <button
-                  class="tool-btn"
-                  data-tool="highlight"
-                  title="Highlight"
-                >
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path
-                      d="M17.7 4.3a1 1 0 0 1 0 1.4l-11 11a1 1 0 0 1-1.4 0l-2-2a1 1 0 0 1 1.4-1.4l1.3 1.3 10.3-10.3a1 1 0 0 1 1.4 0z"
-                    />
-                    <path d="M2 20h20v2H2z" opacity="0.5" />
-                  </svg>
-                </button>
-                <button class="tool-btn" data-tool="line" title="Line">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <line x1="7" y1="17" x2="17" y2="7" />
-                    <polyline points="12,7 17,7 17,12" />
-                  </svg>
-                </button>
-                <button class="tool-btn" data-tool="pen" title="Pen">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path d="M12 19l7-7 3 3-7 7-3-3z" />
-                    <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" />
-                    <path d="M2 2l7.586 7.586" />
-                  </svg>
-                </button>
-                <button class="tool-btn" data-tool="text" title="Text">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <polyline points="4 7 4 4 20 4 20 7" />
-                    <line x1="9" y1="20" x2="15" y2="20" />
-                    <line x1="12" y1="4" x2="12" y2="20" />
-                  </svg>
-                </button>
-              </div>
-
-              <div class="tool-divider"></div>
-
-              <div class="tool-row">
-                <button class="tool-btn" id="undoBtn" title="Undo">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path d="M3 7v6h6" />
-                    <path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13" />
-                  </svg>
-                </button>
-                <button class="tool-btn" id="redoBtn" title="Redo">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                  >
-                    <path d="M21 7v6h-6" />
-                    <path d="M3 17a9 9 0 019-9 9 9 0 016 2.3l3 2.7" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div class="toolbar-section">
-            <div class="toolbar-section-title">Colors</div>
-            <div class="color-picker">
-              <button
-                class="color-btn active"
-                data-color="#ff0000"
-                style="background: #ff0000"
-                title="Red"
-              ></button>
-              <button
-                class="color-btn"
-                data-color="#00ff00"
-                style="background: #00ff00"
-                title="Green"
-              ></button>
-              <button
-                class="color-btn"
-                data-color="#0000ff"
-                style="background: #0000ff"
-                title="Blue"
-              ></button>
-              <button
-                class="color-btn"
-                data-color="#ffff00"
-                style="background: #ffff00"
-                title="Yellow"
-              ></button>
-              <button
-                class="color-btn"
-                data-color="#ff00ff"
-                style="background: #ff00ff"
-                title="Magenta"
-              ></button>
-              <button
-                class="color-btn"
-                data-color="#00ffff"
-                style="background: #00ffff"
-                title="Cyan"
-              ></button>
-              <button
-                class="color-btn"
-                data-color="#000000"
-                style="background: #000000"
-                title="Black"
-              ></button>
-              <button
-                class="color-btn"
-                data-color="#ffffff"
-                style="background: #ffffff; border: 1px solid #ccc"
-                title="White"
-              ></button>
-            </div>
-          </div>
-        </aside>
-      </div>
     </div>
 
     <!-- NEW: Feature Container (All new features load here) -->

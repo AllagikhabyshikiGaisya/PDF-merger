@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="pdf-merge-container">
+      <!-- Header -->
+      <header class="merge-header">
+        <button class="back-button" id="backToMainBtn">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+          <span id="backBtnText">Back</span>
+        </button>
+        <h1 class="merge-title" id="mergeTitle">Merge PDFs</h1>
+        <div class="header-spacer"></div>
+      </header>
+
+      <!-- Main Content Area -->
+      <div class="merge-content">
+        <!-- Upload Area (shown when no files) -->
+        <div class="upload-area" id="uploadArea">
+          <div class="upload-zone" id="dropZone">
+            <svg
+              class="upload-icon"
+              width="80"
+              height="80"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            <h2 class="upload-title" id="uploadTitle">
+              Drop PDFs or Images Here
+            </h2>
+            <p class="upload-subtitle" id="uploadSubtitle">or</p>
+            <button class="browse-button" id="browseBtn">
+              <span id="browseBtnText">Browse Files</span>
+            </button>
+            <input
+              type="file"
+              id="fileInput"
+              accept=".pdf,.png,.jpg,.jpeg"
+              multiple
+              style="display: none"
+            />
+            <p class="upload-hint" id="uploadHint">
+              Supports PDF, PNG, JPG • Max 1GB per file
+            </p>
+          </div>
+        </div>
+
+        <!-- File Grid (shown when files exist) -->
+        <div
+          class="file-grid-container"
+          id="fileGridContainer"
+          style="display: none"
+        >
+          <div class="file-grid" id="fileGrid"></div>
+        </div>
+
+        <!-- Control Panel -->
+        <aside class="control-panel" id="controlPanel">
+          <div class="control-section">
+            <h3 class="control-title" id="statsTitle">Statistics</h3>
+            <div class="stat-item">
+              <span class="stat-label" id="filesLabel">Files:</span>
+              <span class="stat-value" id="filesCount">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label" id="pagesLabel">Pages:</span>
+              <span class="stat-value" id="pagesCount">0</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label" id="sizeLabel">Total Size:</span>
+              <span class="stat-value" id="totalSize">0 KB</span>
+            </div>
+          </div>
+
+          <div class="control-section">
+            <h3 class="control-title" id="actionsTitle">Actions</h3>
+            <button class="control-btn add-btn" id="addMoreBtn">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              <span id="addMoreText">Add More</span>
+            </button>
+            <button class="control-btn clear-btn" id="clearAllBtn">
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path
+                  d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z"
+                />
+              </svg>
+              <span id="clearAllText">Clear All</span>
+            </button>
+            <button class="control-btn merge-btn" id="mergeNowBtn" disabled>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              <span id="mergeNowText">Merge PDFs</span>
+            </button>
+          </div>
+
+          <div class="control-section info-section">
+            <p class="info-text" id="infoText">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+              All processing happens locally on your device
+            </p>
+          </div>
+        </aside>
+      </div>
+
+      <!-- Progress Overlay -->
+      <div
+        class="merge-progress-overlay"
+        id="progressOverlay"
+        style="display: none"
+      >
+        <div class="progress-content">
+          <div class="taichi-loader"></div>
+          <h3 class="progress-title" id="progressTitle">Processing...</h3>
+          <div class="progress-bar-container">
+            <div class="progress-bar" id="progressBar"></div>
+          </div>
+          <p class="progress-text" id="progressText">0%</p>
+          <p class="progress-detail" id="progressDetail">Preparing files...</p>
+        </div>
+      </div>
+    </div>
+    <script src="feature.js"></script>
+  </body>
+</html>
